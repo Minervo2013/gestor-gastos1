@@ -2,10 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 
 export async function POST(request: NextRequest) {
-  // Verificar que Supabase esté configurado
-  if (!supabaseAdmin) {
+  // Verificar que Supabase esté configurado en runtime
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  
+  if (!supabaseUrl || !serviceRoleKey || !supabaseAdmin) {
     return NextResponse.json(
-      { error: 'Supabase no está configurado correctamente' },
+      { error: 'Supabase no está configurado correctamente. Verifica las variables de entorno.' },
       { status: 500 }
     );
   }
