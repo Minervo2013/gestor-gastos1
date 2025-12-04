@@ -2,6 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 
 export async function POST(request: NextRequest) {
+  // Verificar que Supabase esté configurado
+  if (!supabaseAdmin) {
+    return NextResponse.json(
+      { error: 'Supabase no está configurado correctamente' },
+      { status: 500 }
+    );
+  }
+
   try {
     const formData = await request.formData();
     const file = formData.get('file') as File;
