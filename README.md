@@ -162,4 +162,4 @@ Este proyecto está bajo la Licencia MIT. Ver el archivo `LICENSE` para más det
 
 ## 📞 Soporte
 
-Para soporte o consultas, contacta a [tu-email@pueblaequipo.com.ar](mailto:tu-email@pueblaequipo.com.ar)
+Para soporte o consultas, contacta a [tu-email@pueblaequipo.com.ar](mailto:tu-email@pueblaequipo.com.ar)# Deployment sync 12/04/2025 13:45:53
