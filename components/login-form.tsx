@@ -95,9 +95,9 @@ export function LoginForm({ onLogin, onSwitchToRegister }: LoginFormProps) {
       <CardHeader className="space-y-1">
         <div className="flex items-center gap-2">
           <LogIn className="h-5 w-5" />
-          <CardTitle className="text-2xl">Iniciar Sesión</CardTitle>
+          <CardTitle className="text-2xl">🚀 Iniciar Sesión - SYNC TEST</CardTitle>
         </div>
-        <CardDescription>Ingresa tu email para acceder al sistema</CardDescription>
+        <CardDescription>Ingresa tu email para acceder al sistema - Versión actualizada</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
