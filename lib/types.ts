@@ -5,6 +5,7 @@ export interface Expense {
   motivo: string
   detalle: string
   monto: number
+  montoEnPesos?: number // Monto convertido a pesos argentinos (opcional por ahora)
   importeTotal: number
   moneda: string
   tipoCambio?: number

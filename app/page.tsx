@@ -51,25 +51,26 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center">
+    <div className="page-container flex items-center justify-center">
       <div className="container flex flex-col items-center justify-center px-4 py-12 max-w-md mx-auto">
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
-            <Receipt className="h-8 w-8" />
+          <div className="gradient-header rounded-2xl p-6 mb-6 shadow-lg">
+            <div className="flex justify-center items-center space-x-3 mb-4">
+              <Receipt className="h-14 w-14 text-white" />
+              <h1 className="text-4xl font-bold text-white">GestorGastos</h1>
+            </div>
+            <p className="text-xl text-white/90 font-medium">Sistema de gestión de gastos corporativos</p>
+            <div className="mt-4 w-20 h-1 bg-white/30 mx-auto rounded-full"></div>
           </div>
-          <h1 className="text-3xl font-bold sm:text-4xl">GestorGastos</h1>
-          <p className="mt-2 text-muted-foreground">Sistema de gestión de gastos corporativos</p>
         </div>
 
-        <div className="w-full">
+        <div className="w-full card-elegant shadow-xl p-8">
           {showRegister ? (
             <RegisterForm onRegister={handleRegister} onSwitchToLogin={() => setShowRegister(false)} />
           ) : (
             <LoginForm onLogin={handleLogin} onSwitchToRegister={() => setShowRegister(true)} />
           )}
         </div>
-
-
       </div>
     </div>
   )

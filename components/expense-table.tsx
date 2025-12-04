@@ -54,7 +54,24 @@ export function ExpenseTable({ expenses }: ExpenseTableProps) {
     }
   }
 
-  const totalGeneral = expenses.reduce((acc, expense) => acc + expense.importeTotal, 0)
+  const totalGeneral = expenses.reduce((acc, expense) => {
+    // Si tiene montoEnPesos, usarlo (nuevo sistema)
+    if (expense.montoEnPesos && expense.montoEnPesos > 0) {
+      return acc + (expense.tieneCuotas ? expense.montoEnPesos * (expense.cantidadCuotas || 1) : expense.montoEnPesos)
+    }
+    
+    // Fallback: calcular en pesos argentinos
+    if (expense.moneda === 'ARS') {
+      return acc + expense.importeTotal
+    } else if (expense.tipoCambio && expense.tipoCambio > 0) {
+      // Calcular en pesos usando tipo de cambio
+      const montoEnPesos = expense.monto * expense.tipoCambio
+      return acc + (expense.tieneCuotas ? montoEnPesos * (expense.cantidadCuotas || 1) : montoEnPesos)
+    }
+    
+    // Si no hay tipo de cambio, incluir como está (no ideal pero funcional)
+    return acc + expense.importeTotal
+  }, 0)
 
   if (expenses.length === 0) {
     return (
@@ -106,8 +123,26 @@ export function ExpenseTable({ expenses }: ExpenseTableProps) {
 
               <div className="flex items-center justify-between pt-2 border-t">
                 <div>
-                  <p className="text-xs text-muted-foreground">Total</p>
-                  <p className="text-lg font-bold">{formatCurrency(expense.importeTotal, expense.moneda)}</p>
+                  <p className="text-xs text-muted-foreground">Total (ARS)</p>
+                  {expense.moneda === 'ARS' ? (
+                    <p className="text-lg font-bold">{formatCurrency(expense.importeTotal, 'ARS')}</p>
+                  ) : (
+                    <div>
+                      <p className="text-lg font-bold">
+                        {formatCurrency(
+                          expense.montoEnPesos && expense.montoEnPesos > 0 
+                            ? (expense.tieneCuotas ? expense.montoEnPesos * (expense.cantidadCuotas || 1) : expense.montoEnPesos)
+                            : expense.tipoCambio 
+                              ? (expense.tieneCuotas ? expense.monto * expense.tipoCambio * (expense.cantidadCuotas || 1) : expense.monto * expense.tipoCambio)
+                              : expense.importeTotal, 
+                          'ARS'
+                        )}
+                      </p>
+                      {expense.tipoCambio && (
+                        <p className="text-xs text-muted-foreground">{expense.moneda} {expense.tipoCambio.toFixed(2)}</p>
+                      )}
+                    </div>
+                  )}
                 </div>
                 <Button variant="outline" size="sm" onClick={() => setSelectedExpense(expense)}>
                   <Eye className="h-4 w-4 mr-1" />
@@ -126,7 +161,7 @@ export function ExpenseTable({ expenses }: ExpenseTableProps) {
                 <TableHead>Motivo</TableHead>
                 <TableHead>Monto</TableHead>
                 <TableHead>Cuotas</TableHead>
-                <TableHead>Total</TableHead>
+                <TableHead>Total (ARS)</TableHead>
                 <TableHead>Canal</TableHead>
                 <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
@@ -145,7 +180,27 @@ export function ExpenseTable({ expenses }: ExpenseTableProps) {
                     )}
                   </TableCell>
                   <TableCell className="font-semibold">
-                    {formatCurrency(expense.importeTotal, expense.moneda)}
+                    {expense.moneda === 'ARS' ? (
+                      formatCurrency(expense.importeTotal, 'ARS')
+                    ) : (
+                      <div className="space-y-1">
+                        <div>
+                          {formatCurrency(
+                            expense.montoEnPesos && expense.montoEnPesos > 0 
+                              ? (expense.tieneCuotas ? expense.montoEnPesos * (expense.cantidadCuotas || 1) : expense.montoEnPesos)
+                              : expense.tipoCambio 
+                                ? (expense.tieneCuotas ? expense.monto * expense.tipoCambio * (expense.cantidadCuotas || 1) : expense.monto * expense.tipoCambio)
+                                : expense.importeTotal, 
+                            'ARS'
+                          )}
+                        </div>
+                        {expense.tipoCambio && (
+                          <div className="text-xs text-muted-foreground">
+                            {expense.moneda} {expense.tipoCambio.toFixed(2)}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </TableCell>
                   <TableCell>
                     <Badge variant="outline" className="flex items-center gap-1 w-fit">
@@ -166,12 +221,20 @@ export function ExpenseTable({ expenses }: ExpenseTableProps) {
       </div>
 
       <Dialog open={!!selectedExpense} onOpenChange={() => setSelectedExpense(null)}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Detalle del Gasto</DialogTitle>
+        <DialogContent 
+          className="max-w-2xl max-h-[90vh] overflow-y-auto border-2 shadow-xl" 
+          style={{ 
+            backgroundColor: '#ffffff',
+            backdropFilter: 'none',
+            opacity: 1,
+            zIndex: 9999
+          }}
+        >
+          <DialogHeader style={{ backgroundColor: '#ffffff' }}>
+            <DialogTitle className="text-gray-900">Detalle del Gasto</DialogTitle>
           </DialogHeader>
           {selectedExpense && (
-            <div className="space-y-4">
+            <div className="space-y-4 p-1" style={{ backgroundColor: '#ffffff' }}>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Fecha del Gasto</p>
@@ -207,7 +270,7 @@ export function ExpenseTable({ expenses }: ExpenseTableProps) {
                 {selectedExpense.tipoCambio && (
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">Tipo de Cambio</p>
-                    <p className="text-lg">{selectedExpense.tipoCambio}</p>
+                    <p className="text-lg">{selectedExpense.tipoCambio.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                   </div>
                 )}
               </div>
@@ -238,15 +301,28 @@ export function ExpenseTable({ expenses }: ExpenseTableProps) {
                 </div>
               </div>
 
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Total en Pesos Argentinos</p>
+                <p className="text-2xl font-bold">
+                  {selectedExpense.moneda === 'ARS' ? (
+                    formatCurrency(selectedExpense.importeTotal, 'ARS')
+                  ) : (
+                    formatCurrency(selectedExpense.montoEnPesos ? (selectedExpense.tieneCuotas ? selectedExpense.montoEnPesos * (selectedExpense.cantidadCuotas || 1) : selectedExpense.montoEnPesos) : selectedExpense.importeTotal, 'ARS')
+                  )}
+                </p>
+                {selectedExpense.moneda !== 'ARS' && selectedExpense.tipoCambio && (
+                  <p className="text-sm text-muted-foreground">
+                    {formatCurrency(selectedExpense.monto, selectedExpense.moneda)} × {selectedExpense.tipoCambio.toFixed(2)} = {formatCurrency(selectedExpense.montoEnPesos || selectedExpense.monto, 'ARS')}
+                  </p>
+                )}
+              </div>
+
               {selectedExpense.tieneCuotas && (
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Cuotas</p>
                   <p className="text-lg">
                     {selectedExpense.cantidadCuotas} cuotas de{" "}
                     {formatCurrency(selectedExpense.monto, selectedExpense.moneda)}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Total: {formatCurrency(selectedExpense.importeTotal, selectedExpense.moneda)}
                   </p>
                 </div>
               )}

@@ -186,13 +186,13 @@ export function RegisterForm({ onRegister, onSwitchToLogin }: RegisterFormProps)
           {error && <p className="text-sm text-destructive">{error}</p>}
           {success && <p className="text-sm text-green-600">{success}</p>}
 
-          <Button type="submit" className="w-full" disabled={loading || success}>
-            {loading ? "Registrando..." : success ? "Redirigiendo..." : "Registrarse"}
+          <Button type="submit" className="w-full button-elegant" disabled={loading || success}>
+            {loading ? "Registrando..." : "Registrarse"}
           </Button>
 
           <div className="text-center">
-            <Button type="button" variant="link" onClick={onSwitchToLogin} className="text-sm" disabled={loading || success}>
-              ¿Ya tienes cuenta? Inicia sesión
+            <Button type="button" variant="link" onClick={onSwitchToLogin} className="text-sm text-primary hover:text-accent transition-colors" disabled={loading || success}>
+              ¿Ya tienes cuenta? Inicia sesión aquí
             </Button>
           </div>
         </form>

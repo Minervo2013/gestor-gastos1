@@ -83,20 +83,20 @@ export default function ExpensesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b">
+    <div className="page-container">
+      <header className="gradient-header shadow-lg">
         <div className="container mx-auto px-4 py-4 sm:py-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <Receipt className="h-6 w-6 sm:h-8 sm:w-8" />
+              <Receipt className="h-6 w-6 sm:h-8 sm:w-8 text-white" />
               <div>
-                <h1 className="text-2xl sm:text-3xl font-bold">GestorGastos</h1>
-                <p className="text-sm text-muted-foreground">
+                <h1 className="text-2xl sm:text-3xl font-bold text-white">GestorGastos</h1>
+                <p className="text-sm text-white/90">
                   {user.nombre} - {user.sector}
                 </p>
               </div>
             </div>
-            <Button variant="outline" size="sm" onClick={handleLogout}>
+            <Button variant="outline" size="sm" onClick={handleLogout} className="bg-white/10 border-white/30 text-white hover:bg-white/20">
               <LogOut className="mr-2 h-4 w-4" />
               Salir
             </Button>

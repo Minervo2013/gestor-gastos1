@@ -18,6 +18,14 @@ export default function AdminPage() {
   const [filterUser, setFilterUser] = useState<string>("all")
   const [uniqueUsers, setUniqueUsers] = useState<{ id: string; name: string }[]>([])
 
+  const formatCurrency = (amount: number, currency: string) => {
+    return new Intl.NumberFormat("es-AR", {
+      style: "currency",
+      currency: currency === "ARS" ? "ARS" : "USD",
+      minimumFractionDigits: 2,
+    }).format(amount)
+  }
+
   const loadAllExpenses = async (adminUserId: string) => {
     try {
       const response = await fetch(`/api/expenses/all?adminUserId=${adminUserId}`)
@@ -663,18 +671,18 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b">
+    <div className="page-container">
+      <header className="gradient-header shadow-lg">
         <div className="container mx-auto px-4 py-4 sm:py-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <Receipt className="h-6 w-6 sm:h-8 sm:w-8" />
+              <Receipt className="h-6 w-6 sm:h-8 sm:w-8 text-white" />
               <div>
-                <h1 className="text-2xl sm:text-3xl font-bold">GestorGastos - Admin</h1>
-                <p className="text-sm text-muted-foreground">Vista de todos los gastos</p>
+                <h1 className="text-2xl sm:text-3xl font-bold text-white">GestorGastos - Admin</h1>
+                <p className="text-sm text-white/90">Vista de todos los gastos</p>
               </div>
             </div>
-            <Button variant="outline" size="sm" onClick={handleLogout}>
+            <Button variant="outline" size="sm" onClick={handleLogout} className="bg-white/10 border-white/30 text-white hover:bg-white/20">
               <LogOut className="mr-2 h-4 w-4" />
               Salir
             </Button>
@@ -684,22 +692,22 @@ export default function AdminPage() {
 
       <main className="container mx-auto px-4 py-6 sm:py-8">
         <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <Card>
+          <Card className="stat-card-style">
             <CardHeader className="pb-3">
-              <CardDescription>Total de Tickets</CardDescription>
-              <CardTitle className="text-3xl">{filteredExpenses.length}</CardTitle>
+              <CardDescription className="text-muted-foreground">Total de Tickets</CardDescription>
+              <CardTitle className="text-3xl text-primary font-bold">{filteredExpenses.length}</CardTitle>
             </CardHeader>
           </Card>
-          <Card>
+          <Card className="stat-card-style">
             <CardHeader className="pb-3">
-              <CardDescription>Usuarios</CardDescription>
-              <CardTitle className="text-3xl">{uniqueUsers.length}</CardTitle>
+              <CardDescription className="text-muted-foreground">Usuarios</CardDescription>
+              <CardTitle className="text-3xl text-primary font-bold">{uniqueUsers.length}</CardTitle>
             </CardHeader>
           </Card>
-          <Card>
+          <Card className="stat-card-style">
             <CardHeader className="pb-3">
-              <CardDescription>Total General</CardDescription>
-              <CardTitle className="text-3xl">
+              <CardDescription className="text-muted-foreground">Total General</CardDescription>
+              <CardTitle className="text-3xl text-primary font-bold">
                 ${totalGeneral.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
               </CardTitle>
             </CardHeader>
@@ -743,7 +751,7 @@ export default function AdminPage() {
                 <div key={u.id} className="flex items-center justify-between p-3 rounded-lg border">
                   <span className="font-medium">{u.name}</span>
                   <Button 
-                    variant="outline" 
+                    className="button-elegant" 
                     size="sm" 
                     onClick={() => handleGenerateReport(u.id, u.name)}
                   >
@@ -810,12 +818,20 @@ export default function AdminPage() {
       </main>
 
       <Dialog open={!!selectedExpense} onOpenChange={() => setSelectedExpense(null)}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
-          <DialogHeader>
+        <DialogContent 
+          className="max-h-[90vh] overflow-y-auto sm:max-w-2xl border shadow-lg"
+          style={{ 
+            backgroundColor: '#ffffff',
+            backdropFilter: 'none',
+            opacity: 1,
+            zIndex: 9999
+          }}
+        >
+          <DialogHeader style={{ backgroundColor: '#ffffff' }}>
             <DialogTitle>Detalle del Ticket</DialogTitle>
           </DialogHeader>
           {selectedExpense && (
-            <div className="space-y-6">
+            <div className="space-y-6" style={{ backgroundColor: '#ffffff' }}>
               <div className="rounded-lg bg-muted p-4">
                 <h3 className="mb-2 font-semibold">Información del Usuario</h3>
                 <div className="space-y-1 text-sm">
@@ -853,13 +869,13 @@ export default function AdminPage() {
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Monto</p>
                   <p className="text-lg font-semibold">
-                    {selectedExpense.moneda} {selectedExpense.monto.toFixed(2)}
+                    {formatCurrency(selectedExpense.monto, selectedExpense.moneda)}
                   </p>
                 </div>
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Importe Total</p>
                   <p className="text-lg font-semibold">
-                    {selectedExpense.moneda} {selectedExpense.importeTotal.toFixed(2)}
+                    {formatCurrency(selectedExpense.importeTotal, selectedExpense.moneda)}
                   </p>
                 </div>
               </div>
@@ -867,7 +883,7 @@ export default function AdminPage() {
               {selectedExpense.tipoCambio && (
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Tipo de Cambio</p>
-                  <p className="text-lg">{selectedExpense.tipoCambio}</p>
+                  <p className="text-lg">{selectedExpense.tipoCambio.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                 </div>
               )}
 

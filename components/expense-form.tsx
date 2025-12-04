@@ -40,6 +40,18 @@ export function ExpenseForm({ onSubmit }: ExpenseFormProps) {
   } | null>(null)
   
   const [uploading, setUploading] = useState(false)
+  const [montoEnPesos, setMontoEnPesos] = useState<number>(0)
+
+  // Actualizar monto en pesos cuando cambian los valores
+  const updateMontoEnPesos = (newFormData: typeof formData) => {
+    const monto = parseFloat(newFormData.monto) || 0
+    if (newFormData.moneda === 'ARS') {
+      setMontoEnPesos(monto)
+    } else {
+      const tipoCambio = parseFloat(newFormData.tipoCambio) || 0
+      setMontoEnPesos(monto * tipoCambio)
+    }
+  }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -89,12 +101,26 @@ export function ExpenseForm({ onSubmit }: ExpenseFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    // Validar tipo de cambio para monedas no ARS
+    if (formData.moneda !== 'ARS' && (!formData.tipoCambio || parseFloat(formData.tipoCambio) <= 0)) {
+      alert(`Debes ingresar un tipo de cambio válido para ${formData.moneda}`)
+      return
+    }
+    
     setUploading(true)
 
     try {
       const monto = Number.parseFloat(formData.monto)
       const cantidadCuotas = formData.tieneCuotas ? Number.parseInt(formData.cantidadCuotas) : 1
-      const importeTotal = monto * cantidadCuotas
+      
+      // Calcular monto en pesos argentinos
+      let montoEnPesosArgentinos = monto
+      if (formData.moneda !== 'ARS') {
+        montoEnPesosArgentinos = monto * parseFloat(formData.tipoCambio)
+      }
+      
+      const importeTotal = montoEnPesosArgentinos * cantidadCuotas
       const expenseId = Date.now().toString()
 
       let documentoUrl: string | undefined = undefined
@@ -116,6 +142,7 @@ export function ExpenseForm({ onSubmit }: ExpenseFormProps) {
         motivo: formData.motivo,
         detalle: formData.detalle,
         monto,
+        montoEnPesos: montoEnPesosArgentinos, // Calculamos pero no enviamos por ahora
         importeTotal,
         moneda: formData.moneda,
         tipoCambio: formData.tipoCambio ? Number.parseFloat(formData.tipoCambio) : undefined,
@@ -250,7 +277,11 @@ export function ExpenseForm({ onSubmit }: ExpenseFormProps) {
                 type="number"
                 step="0.01"
                 value={formData.monto}
-                onChange={(e) => setFormData({ ...formData, monto: e.target.value })}
+                onChange={(e) => {
+                  const newFormData = { ...formData, monto: e.target.value }
+                  setFormData(newFormData)
+                  updateMontoEnPesos(newFormData)
+                }}
                 placeholder="0.00"
                 required
               />
@@ -258,7 +289,11 @@ export function ExpenseForm({ onSubmit }: ExpenseFormProps) {
 
             <div className="space-y-2">
               <Label htmlFor="moneda">Moneda</Label>
-              <Select value={formData.moneda} onValueChange={(value) => setFormData({ ...formData, moneda: value })}>
+              <Select value={formData.moneda} onValueChange={(value) => {
+                const newFormData = { ...formData, moneda: value, tipoCambio: value === 'ARS' ? '' : formData.tipoCambio }
+                setFormData(newFormData)
+                updateMontoEnPesos(newFormData)
+              }}>
                 <SelectTrigger id="moneda">
                   <SelectValue />
                 </SelectTrigger>
@@ -272,18 +307,43 @@ export function ExpenseForm({ onSubmit }: ExpenseFormProps) {
               </Select>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="tipoCambio">Tipo de Cambio</Label>
-              <Input
-                id="tipoCambio"
-                type="number"
-                step="0.01"
-                value={formData.tipoCambio}
-                onChange={(e) => setFormData({ ...formData, tipoCambio: e.target.value })}
-                placeholder="Opcional"
-              />
-            </div>
+            {formData.moneda !== 'ARS' && (
+              <div className="space-y-2">
+                <Label htmlFor="tipoCambio">Tipo de Cambio *</Label>
+                <Input
+                  id="tipoCambio"
+                  type="number"
+                  step="0.01"
+                  value={formData.tipoCambio}
+                  onChange={(e) => {
+                    const newFormData = { ...formData, tipoCambio: e.target.value }
+                    setFormData(newFormData)
+                    updateMontoEnPesos(newFormData)
+                  }}
+                  placeholder="Ej: 1500.00"
+                  required
+                />
+                <p className="text-xs text-muted-foreground">
+                  Valor de {formData.moneda} en pesos argentinos
+                </p>
+              </div>
+            )}
           </div>
+
+          {/* Mostrar monto calculado en pesos */}
+          {formData.moneda !== 'ARS' && formData.monto && formData.tipoCambio && (
+            <div className="stat-card-style p-4 rounded-lg">
+              <div className="text-center">
+                <p className="text-sm text-muted-foreground">Equivalente en Pesos Argentinos:</p>
+                <p className="text-2xl font-bold text-primary">
+                  ${montoEnPesos.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ARS
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {formData.monto} {formData.moneda} × {formData.tipoCambio} = {montoEnPesos.toFixed(2)} ARS
+                </p>
+              </div>
+            </div>
+          )}
 
           <div className="flex items-center justify-between rounded-lg border p-4">
             <div className="space-y-0.5">

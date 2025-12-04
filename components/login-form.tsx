@@ -129,12 +129,12 @@ export function LoginForm({ onLogin, onSwitchToRegister }: LoginFormProps) {
 
           {error && <p className="text-sm text-destructive">{error}</p>}
 
-          <Button type="submit" className="w-full" disabled={loading}>
+          <Button type="submit" className="w-full button-elegant" disabled={loading}>
             {loading ? "Iniciando..." : "Iniciar Sesión"}
           </Button>
 
           <div className="text-center">
-            <Button type="button" variant="link" onClick={onSwitchToRegister} className="text-sm" disabled={loading}>
+            <Button type="button" variant="link" onClick={onSwitchToRegister} className="text-sm text-primary hover:text-accent transition-colors" disabled={loading}>
               ¿No tienes cuenta? Regístrate aquí
             </Button>
           </div>
