@@ -1,0 +1,340 @@
+"use client"
+
+import type React from "react"
+
+import { useState } from "react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Switch } from "@/components/ui/switch"
+import { Upload, X } from "lucide-react"
+import { type Expense, MONEDAS } from "@/lib/types"
+import { getCurrentUser } from "@/lib/auth"
+
+interface ExpenseFormProps {
+  onSubmit: (expense: Expense) => void
+}
+
+export function ExpenseForm({ onSubmit }: ExpenseFormProps) {
+  const [formData, setFormData] = useState({
+    fechaGasto: new Date().toISOString().split("T")[0],
+    motivo: "",
+    detalle: "",
+    monto: "",
+    moneda: "ARS",
+    tipoCambio: "",
+    canalPago: "" as "" | "web" | "local" | "otro",
+    canalPagoDetalle: "",
+    tieneCuotas: false,
+    cantidadCuotas: "",
+  })
+
+  const [documento, setDocumento] = useState<{
+    file?: File
+    url?: string
+    nombre: string
+    tipo: string
+  } | null>(null)
+  
+  const [uploading, setUploading] = useState(false)
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      // Limitar tamaño a 5MB
+      if (file.size > 5 * 1024 * 1024) {
+        alert("El archivo es demasiado grande. Máximo 5MB.")
+        return
+      }
+
+      setDocumento({
+        file,
+        nombre: file.name,
+        tipo: file.type,
+      })
+    }
+  }
+
+  const uploadFile = async (file: File, expenseId: string): Promise<string | null> => {
+    try {
+      const currentUser = getCurrentUser()
+      if (!currentUser) return null
+
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('userId', currentUser.id)
+      formData.append('expenseId', expenseId)
+
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      })
+
+      const result = await response.json()
+      
+      if (result.success) {
+        return result.url
+      } else {
+        console.error('Error subiendo archivo:', result.error)
+        return null
+      }
+    } catch (error) {
+      console.error('Error al subir archivo:', error)
+      return null
+    }
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setUploading(true)
+
+    try {
+      const monto = Number.parseFloat(formData.monto)
+      const cantidadCuotas = formData.tieneCuotas ? Number.parseInt(formData.cantidadCuotas) : 1
+      const importeTotal = monto * cantidadCuotas
+      const expenseId = Date.now().toString()
+
+      let documentoUrl: string | undefined = undefined
+
+      // Subir archivo si existe
+      if (documento?.file) {
+        documentoUrl = await uploadFile(documento.file, expenseId)
+        if (!documentoUrl) {
+          alert("Error al subir el archivo. Inténtalo de nuevo.")
+          setUploading(false)
+          return
+        }
+      }
+
+      const expense: Expense = {
+        id: expenseId,
+        fechaGasto: formData.fechaGasto,
+        fechaCarga: new Date().toISOString(),
+        motivo: formData.motivo,
+        detalle: formData.detalle,
+        monto,
+        importeTotal,
+        moneda: formData.moneda,
+        tipoCambio: formData.tipoCambio ? Number.parseFloat(formData.tipoCambio) : undefined,
+        canalPago: formData.canalPago as "web" | "local" | "otro",
+        canalPagoDetalle: formData.canalPagoDetalle || undefined,
+        tieneCuotas: formData.tieneCuotas,
+        cantidadCuotas: formData.tieneCuotas ? cantidadCuotas : undefined,
+        documento: documentoUrl,
+        documentoNombre: documento?.nombre,
+        documentoTipo: documento?.tipo,
+      }
+
+      onSubmit(expense)
+    } catch (error) {
+      console.error('Error al procesar gasto:', error)
+      alert("Error al procesar el gasto. Inténtalo de nuevo.")
+    } finally {
+      setUploading(false)
+    }
+
+    // Reset form
+    setFormData({
+      fechaGasto: new Date().toISOString().split("T")[0],
+      motivo: "",
+      detalle: "",
+      monto: "",
+      moneda: "ARS",
+      tipoCambio: "",
+      canalPago: "",
+      canalPagoDetalle: "",
+      tieneCuotas: false,
+      cantidadCuotas: "",
+    })
+    setDocumento(null)
+  }
+
+  const getCanalPagoDetalleConfig = () => {
+    switch (formData.canalPago) {
+      case "web":
+        return { label: "URL de la Web", placeholder: "https://ejemplo.com" }
+      case "local":
+        return { label: "Nombre de la Tienda/Local", placeholder: "Nombre del local físico" }
+      case "otro":
+        return { label: "Comentario", placeholder: "Especificar canal de pago" }
+      default:
+        return { label: "Detalle", placeholder: "" }
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-xl">Registrar Gasto</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="fechaGasto">Fecha del Gasto</Label>
+              <Input
+                id="fechaGasto"
+                type="date"
+                value={formData.fechaGasto}
+                onChange={(e) => setFormData({ ...formData, fechaGasto: e.target.value })}
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="canalPago">Canal de Pago</Label>
+              <Select
+                value={formData.canalPago}
+                onValueChange={(value) =>
+                  setFormData({ ...formData, canalPago: value as "web" | "local" | "otro", canalPagoDetalle: "" })
+                }
+                required
+              >
+                <SelectTrigger id="canalPago">
+                  <SelectValue placeholder="Seleccionar canal" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="web">Web</SelectItem>
+                  <SelectItem value="local">Local/Tienda Física</SelectItem>
+                  <SelectItem value="otro">Otro</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {formData.canalPago && (
+            <div className="space-y-2">
+              <Label htmlFor="canalPagoDetalle">{getCanalPagoDetalleConfig().label}</Label>
+              <Input
+                id="canalPagoDetalle"
+                value={formData.canalPagoDetalle}
+                onChange={(e) => setFormData({ ...formData, canalPagoDetalle: e.target.value })}
+                placeholder={getCanalPagoDetalleConfig().placeholder}
+                type={formData.canalPago === "web" ? "url" : "text"}
+                required
+              />
+            </div>
+          )}
+
+          <div className="space-y-2">
+            <Label htmlFor="motivo">Motivo del Uso</Label>
+            <Input
+              id="motivo"
+              value={formData.motivo}
+              onChange={(e) => setFormData({ ...formData, motivo: e.target.value })}
+              placeholder="Ej: Compra de suministros"
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="detalle">Detalle</Label>
+            <Textarea
+              id="detalle"
+              value={formData.detalle}
+              onChange={(e) => setFormData({ ...formData, detalle: e.target.value })}
+              placeholder="Descripción detallada del gasto"
+              rows={3}
+              required
+            />
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div className="space-y-2">
+              <Label htmlFor="monto">Monto</Label>
+              <Input
+                id="monto"
+                type="number"
+                step="0.01"
+                value={formData.monto}
+                onChange={(e) => setFormData({ ...formData, monto: e.target.value })}
+                placeholder="0.00"
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="moneda">Moneda</Label>
+              <Select value={formData.moneda} onValueChange={(value) => setFormData({ ...formData, moneda: value })}>
+                <SelectTrigger id="moneda">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {MONEDAS.map((moneda) => (
+                    <SelectItem key={moneda} value={moneda}>
+                      {moneda}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="tipoCambio">Tipo de Cambio</Label>
+              <Input
+                id="tipoCambio"
+                type="number"
+                step="0.01"
+                value={formData.tipoCambio}
+                onChange={(e) => setFormData({ ...formData, tipoCambio: e.target.value })}
+                placeholder="Opcional"
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between rounded-lg border p-4">
+            <div className="space-y-0.5">
+              <Label htmlFor="tieneCuotas">¿Pago en cuotas?</Label>
+              <p className="text-sm text-muted-foreground">Especifica si el gasto se pagará en cuotas</p>
+            </div>
+            <Switch
+              id="tieneCuotas"
+              checked={formData.tieneCuotas}
+              onCheckedChange={(checked) => setFormData({ ...formData, tieneCuotas: checked })}
+            />
+          </div>
+
+          {formData.tieneCuotas && (
+            <div className="space-y-2">
+              <Label htmlFor="cantidadCuotas">Cantidad de Cuotas</Label>
+              <Input
+                id="cantidadCuotas"
+                type="number"
+                min="2"
+                value={formData.cantidadCuotas}
+                onChange={(e) => setFormData({ ...formData, cantidadCuotas: e.target.value })}
+                placeholder="Ej: 12"
+                required={formData.tieneCuotas}
+              />
+            </div>
+          )}
+
+          <div className="space-y-2">
+            <Label>Documento / Comprobante</Label>
+            {documento ? (
+              <div className="flex items-center gap-2 rounded-lg border p-3">
+                <div className="flex-1 truncate text-sm">{documento.nombre}</div>
+                <Button type="button" variant="ghost" size="sm" onClick={() => setDocumento(null)}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            ) : (
+              <label className="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed p-6 transition-colors hover:border-primary hover:bg-accent">
+                <Upload className="h-5 w-5 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">Subir archivo (PDF, imagen, etc.)</span>
+                <input type="file" className="hidden" accept="image/*,.pdf,.doc,.docx" onChange={handleFileChange} />
+              </label>
+            )}
+          </div>
+
+          <Button type="submit" className="w-full" disabled={uploading}>
+            {uploading ? "Subiendo archivo..." : "Registrar Gasto"}
+          </Button>
+        </form>
+      </CardContent>
+    </Card>
+  )
+}

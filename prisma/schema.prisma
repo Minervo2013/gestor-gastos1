@@ -1,0 +1,55 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                String    @id @default(cuid())
+  email            String    @unique
+  nombre           String
+  sector           String
+  tarjetaUltimos4  String
+  password         String?
+  isAdmin          Boolean   @default(false)
+  isCodeVerified   Boolean   @default(false)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  expenses         Expense[]
+
+  @@map("users")
+}
+
+model Expense {
+  id                 String    @id @default(cuid())
+  fechaGasto         DateTime
+  fechaCarga         DateTime  @default(now())
+  motivo             String
+  detalle            String
+  monto              Float
+  importeTotal       Float
+  moneda             String
+  tipoCambio         Float?
+  canalPago          String    // "web", "local", "otro"
+  canalPagoDetalle   String?
+  tieneCuotas        Boolean   @default(false)
+  cantidadCuotas     Int?
+  documento          String?   // Base64 del archivo o URL
+  documentoNombre    String?
+  documentoTipo      String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  // Relación con el usuario
+  userId             String
+  user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("expenses")
+}
