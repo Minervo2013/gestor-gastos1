@@ -69,9 +69,7 @@ export default function Home() {
           )}
         </div>
 
-        <div className="mt-8 text-center text-sm text-muted-foreground">
-          <p>Usuario admin de prueba: admin@company.com</p>
-        </div>
+
       </div>
     </div>
   )
