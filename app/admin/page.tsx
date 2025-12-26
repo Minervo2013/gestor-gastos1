@@ -3,12 +3,14 @@
 import { useState, useEffect } from "react"
 import { getCurrentUser, logout } from "@/lib/auth"
 import type { UserExpense, User } from "@/lib/types"
-import { Receipt, LogOut, Eye, Printer, Filter, FileText, Download } from "lucide-react"
+import { Receipt, LogOut, Eye, Printer, Filter, FileText, Download, Upload, CreditCard } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 
 export default function AdminPage() {
   const [user, setUser] = useState<User | null>(null)
@@ -17,6 +19,12 @@ export default function AdminPage() {
   const [selectedExpense, setSelectedExpense] = useState<UserExpense | null>(null)
   const [filterUser, setFilterUser] = useState<string>("all")
   const [uniqueUsers, setUniqueUsers] = useState<{ id: string; name: string }[]>([])
+  const [showUploadSummaryDialog, setShowUploadSummaryDialog] = useState(false)
+  const [selectedUserForSummary, setSelectedUserForSummary] = useState<{ id: string; name: string } | null>(null)
+  const [summaryPeriod, setSummaryPeriod] = useState("")
+  const [summaryFile, setSummaryFile] = useState<File | null>(null)
+  const [summaryDescription, setSummaryDescription] = useState("")
+  const [isUploadingSummary, setIsUploadingSummary] = useState(false)
 
   const formatCurrency = (amount: number, currency: string) => {
     return new Intl.NumberFormat("es-AR", {
@@ -664,6 +672,72 @@ export default function AdminPage() {
     `;
   };
 
+  const handleOpenUploadSummary = (selectedUser: { id: string; name: string }) => {
+    setSelectedUserForSummary(selectedUser)
+    const currentMonth = new Date().toISOString().slice(0, 7)
+    setSummaryPeriod(currentMonth)
+    setSummaryFile(null)
+    setSummaryDescription("")
+    setShowUploadSummaryDialog(true)
+  }
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      setSummaryFile(file)
+    }
+  }
+
+  const handleUploadSummary = async () => {
+    if (!user || !selectedUserForSummary || !summaryFile || !summaryPeriod) {
+      alert("Por favor complete todos los campos requeridos")
+      return
+    }
+
+    setIsUploadingSummary(true)
+
+    try {
+      const reader = new FileReader()
+      reader.onloadend = async () => {
+        const base64 = reader.result as string
+
+        const response = await fetch("/api/card-summaries", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            userId: selectedUserForSummary.id,
+            periodo: summaryPeriod,
+            archivo: base64,
+            archivoNombre: summaryFile.name,
+            archivoTipo: summaryFile.type,
+            descripcion: summaryDescription,
+            adminUserId: user.id,
+          }),
+        })
+
+        const data = await response.json()
+
+        if (data.success) {
+          alert(`Resumen subido exitosamente para ${selectedUserForSummary.name}`)
+          setShowUploadSummaryDialog(false)
+          setSummaryFile(null)
+          setSummaryDescription("")
+        } else {
+          alert("Error al subir el resumen: " + data.error)
+        }
+      }
+
+      reader.readAsDataURL(summaryFile)
+    } catch (error) {
+      console.error("Error:", error)
+      alert("Error al subir el resumen")
+    } finally {
+      setIsUploadingSummary(false)
+    }
+  }
+
   const totalGeneral = filteredExpenses.reduce((sum, e) => sum + e.importeTotal, 0)
 
   if (!user) {
@@ -738,6 +812,33 @@ export default function AdminPage() {
           </CardContent>
         </Card>
 
+        <Card className="mb-6">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle>Resúmenes de Tarjeta</CardTitle>
+              <CreditCard className="h-5 w-5 text-muted-foreground" />
+            </div>
+            <CardDescription>Subir resúmenes mensuales de tarjeta para cada usuario</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {uniqueUsers.map((u) => (
+                <div key={u.id} className="flex items-center justify-between p-3 rounded-lg border">
+                  <span className="font-medium">{u.name}</span>
+                  <Button
+                    className="button-elegant"
+                    size="sm"
+                    onClick={() => handleOpenUploadSummary(u)}
+                  >
+                    <Upload className="mr-2 h-4 w-4" />
+                    Subir Resumen
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -750,9 +851,9 @@ export default function AdminPage() {
               {uniqueUsers.map((u) => (
                 <div key={u.id} className="flex items-center justify-between p-3 rounded-lg border">
                   <span className="font-medium">{u.name}</span>
-                  <Button 
-                    className="button-elegant" 
-                    size="sm" 
+                  <Button
+                    className="button-elegant"
+                    size="sm"
                     onClick={() => handleGenerateReport(u.id, u.name)}
                   >
                     <Download className="mr-2 h-4 w-4" />
@@ -949,6 +1050,80 @@ export default function AdminPage() {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showUploadSummaryDialog} onOpenChange={setShowUploadSummaryDialog}>
+        <DialogContent
+          className="sm:max-w-md border shadow-lg"
+          style={{
+            backgroundColor: '#ffffff',
+            backdropFilter: 'none',
+            opacity: 1
+          }}
+        >
+          <DialogHeader style={{ backgroundColor: '#ffffff' }}>
+            <DialogTitle>Subir Resumen de Tarjeta</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4" style={{ backgroundColor: '#ffffff' }}>
+            <div>
+              <Label className="text-sm font-medium">Usuario</Label>
+              <p className="text-lg font-semibold">{selectedUserForSummary?.name}</p>
+            </div>
+
+            <div>
+              <Label htmlFor="periodo">Período (Mes/Año)</Label>
+              <Input
+                id="periodo"
+                type="month"
+                value={summaryPeriod}
+                onChange={(e) => setSummaryPeriod(e.target.value)}
+                required
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="file">Archivo (PDF o Imagen)</Label>
+              <Input
+                id="file"
+                type="file"
+                accept=".pdf,image/*"
+                onChange={handleFileChange}
+                required
+              />
+              {summaryFile && (
+                <p className="text-sm text-muted-foreground mt-1">
+                  Archivo seleccionado: {summaryFile.name}
+                </p>
+              )}
+            </div>
+
+            <div>
+              <Label htmlFor="descripcion">Descripción (opcional)</Label>
+              <Input
+                id="descripcion"
+                placeholder="Ej: Resumen tarjeta corporativa diciembre 2024"
+                value={summaryDescription}
+                onChange={(e) => setSummaryDescription(e.target.value)}
+              />
+            </div>
+
+            <div className="flex justify-end gap-3">
+              <Button
+                variant="outline"
+                onClick={() => setShowUploadSummaryDialog(false)}
+                disabled={isUploadingSummary}
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleUploadSummary}
+                disabled={isUploadingSummary || !summaryFile || !summaryPeriod}
+              >
+                {isUploadingSummary ? "Subiendo..." : "Subir Resumen"}
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

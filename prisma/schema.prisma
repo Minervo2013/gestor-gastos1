@@ -23,6 +23,7 @@ model User {
   updatedAt        DateTime  @updatedAt
 
   expenses         Expense[]
+  cardSummaries    CardSummary[]
 
   @@map("users")
 }
@@ -53,4 +54,22 @@ model Expense {
   user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("expenses")
+}
+
+model CardSummary {
+  id                 String    @id @default(cuid())
+  periodo            String    // Formato: "YYYY-MM" (ej: "2024-12")
+  archivo            String    // Base64 del PDF/imagen del resumen
+  archivoNombre      String
+  archivoTipo        String
+  descripcion        String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  // Relación con el usuario
+  userId             String
+  user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("card_summaries")
+  @@index([userId, periodo])
 }
