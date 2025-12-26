@@ -6,7 +6,9 @@
       "Bash(npm run build:*)",
       "Bash(timeout 10 npm run dev:*)",
       "Bash(NODE_OPTIONS='--no-turbo' timeout 15 npx next dev:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(npm install:*)",
+      "Bash(git add:*)"
     ]
   }
 }
