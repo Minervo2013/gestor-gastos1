@@ -173,7 +173,112 @@ export async function POST(request: NextRequest) {
     console.error('=== FIN ERROR ===');
     
     return NextResponse.json(
-      { 
+      {
+        error: 'Error interno del servidor',
+        details: error instanceof Error ? error.message : String(error)
+      },
+      { status: 500 }
+    );
+  }
+}
+
+export async function PUT(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const {
+      expenseId,
+      userId,
+      fechaGasto,
+      motivo,
+      detalle,
+      monto,
+      montoEnPesos,
+      importeTotal,
+      moneda,
+      tipoCambio,
+      canalPago,
+      canalPagoDetalle,
+      tieneCuotas,
+      cantidadCuotas,
+      documento,
+      documentoNombre,
+      documentoTipo
+    } = body;
+
+    // Validaciones básicas
+    if (!expenseId || !userId || !fechaGasto || !motivo || !detalle || !monto || !importeTotal || !moneda || !canalPago) {
+      return NextResponse.json(
+        { success: false, error: 'Todos los campos obligatorios deben estar presentes' },
+        { status: 400 }
+      );
+    }
+
+    // Verificar que el gasto existe y pertenece al usuario
+    const existingExpense = await prisma.expense.findUnique({
+      where: { id: expenseId }
+    });
+
+    if (!existingExpense) {
+      return NextResponse.json(
+        { success: false, error: 'Gasto no encontrado' },
+        { status: 404 }
+      );
+    }
+
+    if (existingExpense.userId !== userId) {
+      return NextResponse.json(
+        { success: false, error: 'No tienes permiso para editar este gasto' },
+        { status: 403 }
+      );
+    }
+
+    // Calcular montoEnPesos si es necesario
+    let calculatedMontoEnPesos = montoEnPesos;
+    if (moneda !== 'ARS') {
+      if (!tipoCambio || parseFloat(tipoCambio) <= 0) {
+        return NextResponse.json(
+          { success: false, error: 'Tipo de cambio es obligatorio para monedas diferentes a ARS' },
+          { status: 400 }
+        );
+      }
+      calculatedMontoEnPesos = parseFloat(monto) * parseFloat(tipoCambio);
+    } else {
+      calculatedMontoEnPesos = parseFloat(monto);
+    }
+
+    // Actualizar usando SQL crudo
+    const updatedExpense = await prisma.$queryRaw`
+      UPDATE expenses SET
+        "fechaGasto" = ${new Date(fechaGasto)},
+        motivo = ${motivo},
+        detalle = ${detalle},
+        monto = ${parseFloat(monto)},
+        "montoEnPesos" = ${parseFloat(calculatedMontoEnPesos)},
+        "importeTotal" = ${parseFloat(importeTotal)},
+        moneda = ${moneda},
+        "tipoCambio" = ${tipoCambio ? parseFloat(tipoCambio) : null},
+        "canalPago" = ${canalPago},
+        "canalPagoDetalle" = ${canalPagoDetalle},
+        "tieneCuotas" = ${Boolean(tieneCuotas)},
+        "cantidadCuotas" = ${cantidadCuotas ? parseInt(cantidadCuotas) : null},
+        documento = ${documento},
+        "documentoNombre" = ${documentoNombre},
+        "documentoTipo" = ${documentoTipo},
+        "updatedAt" = ${new Date()}
+      WHERE id = ${expenseId}
+      RETURNING *;
+    `;
+
+    return NextResponse.json({
+      success: true,
+      expense: updatedExpense
+    });
+
+  } catch (error) {
+    console.error('Error al actualizar gasto:', error);
+    return NextResponse.json(
+      {
+        success: false,
         error: 'Error interno del servidor',
         details: error instanceof Error ? error.message : String(error)
       },

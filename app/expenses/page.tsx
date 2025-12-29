@@ -26,6 +26,7 @@ export default function ExpensesPage() {
   const [showSummariesDialog, setShowSummariesDialog] = useState(false)
   const [cardSummaries, setCardSummaries] = useState<CardSummary[]>([])
   const [selectedSummary, setSelectedSummary] = useState<CardSummary | null>(null)
+  const [editingExpense, setEditingExpense] = useState<Expense | null>(null)
 
   const loadUserExpenses = async (userId: string) => {
     try {
@@ -86,6 +87,38 @@ export default function ExpensesPage() {
 
   const handleAddExpense = (expense: Expense) => {
     createExpense(expense)
+  }
+
+  const handleEditExpense = async (expenseData: Expense) => {
+    if (!user || !editingExpense) return
+
+    try {
+      const response = await fetch('/api/expenses', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...expenseData,
+          expenseId: editingExpense.id,
+          userId: user.id,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        loadUserExpenses(user.id)
+        setEditingExpense(null)
+        alert('Gasto actualizado exitosamente')
+      } else {
+        console.error('Error actualizando gasto:', data.error)
+        alert('Error al actualizar el gasto: ' + data.error)
+      }
+    } catch (error) {
+      console.error('Error al actualizar gasto:', error)
+      alert('Error de conexión al actualizar el gasto')
+    }
   }
 
   const handleLogout = () => {
@@ -167,10 +200,34 @@ export default function ExpensesPage() {
             <ExpenseForm onSubmit={handleAddExpense} />
           </div>
           <div>
-            <ExpenseTable expenses={expenses} />
+            <ExpenseTable expenses={expenses} onEdit={(expense) => setEditingExpense(expense)} />
           </div>
         </div>
       </main>
+
+      <Dialog open={!!editingExpense} onOpenChange={() => setEditingExpense(null)}>
+        <DialogContent
+          className="sm:max-w-3xl max-h-[90vh] overflow-y-auto border shadow-lg"
+          style={{
+            backgroundColor: '#ffffff',
+            backdropFilter: 'none',
+            opacity: 1
+          }}
+        >
+          <DialogHeader style={{ backgroundColor: '#ffffff' }}>
+            <DialogTitle>Editar Gasto</DialogTitle>
+          </DialogHeader>
+          <div style={{ backgroundColor: '#ffffff' }}>
+            {editingExpense && (
+              <ExpenseForm
+                onSubmit={handleEditExpense}
+                initialData={editingExpense}
+                isEditing={true}
+              />
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={showSummariesDialog} onOpenChange={setShowSummariesDialog}>
         <DialogContent

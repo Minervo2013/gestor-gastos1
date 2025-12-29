@@ -6,13 +6,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { FileText, Eye, Globe, Store, Info } from "lucide-react"
+import { FileText, Eye, Globe, Store, Info, Pencil } from "lucide-react"
 
 interface ExpenseTableProps {
   expenses: Expense[]
+  onEdit?: (expense: Expense) => void
 }
 
-export function ExpenseTable({ expenses }: ExpenseTableProps) {
+export function ExpenseTable({ expenses, onEdit }: ExpenseTableProps) {
   const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null)
 
   const formatCurrency = (amount: number, currency: string) => {
@@ -130,11 +131,11 @@ export function ExpenseTable({ expenses }: ExpenseTableProps) {
                     <div>
                       <p className="text-lg font-bold">
                         {formatCurrency(
-                          expense.montoEnPesos && expense.montoEnPesos > 0 
+                          expense.montoEnPesos && expense.montoEnPesos > 0
                             ? (expense.tieneCuotas ? expense.montoEnPesos * (expense.cantidadCuotas || 1) : expense.montoEnPesos)
-                            : expense.tipoCambio 
+                            : expense.tipoCambio
                               ? (expense.tieneCuotas ? expense.monto * expense.tipoCambio * (expense.cantidadCuotas || 1) : expense.monto * expense.tipoCambio)
-                              : expense.importeTotal, 
+                              : expense.importeTotal,
                           'ARS'
                         )}
                       </p>
@@ -144,10 +145,17 @@ export function ExpenseTable({ expenses }: ExpenseTableProps) {
                     </div>
                   )}
                 </div>
-                <Button variant="outline" size="sm" onClick={() => setSelectedExpense(expense)}>
-                  <Eye className="h-4 w-4 mr-1" />
-                  Ver detalle
-                </Button>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={() => setSelectedExpense(expense)}>
+                    <Eye className="h-4 w-4 mr-1" />
+                    Ver
+                  </Button>
+                  {onEdit && (
+                    <Button variant="outline" size="sm" onClick={() => onEdit(expense)}>
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
           ))}
@@ -209,9 +217,16 @@ export function ExpenseTable({ expenses }: ExpenseTableProps) {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button variant="ghost" size="sm" onClick={() => setSelectedExpense(expense)}>
-                      <Eye className="h-4 w-4" />
-                    </Button>
+                    <div className="flex items-center justify-end gap-2">
+                      <Button variant="ghost" size="sm" onClick={() => setSelectedExpense(expense)}>
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      {onEdit && (
+                        <Button variant="ghost" size="sm" onClick={() => onEdit(expense)}>
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
@@ -373,6 +388,18 @@ export function ExpenseTable({ expenses }: ExpenseTableProps) {
                       </div>
                     )}
                   </div>
+                </div>
+              )}
+
+              {onEdit && (
+                <div className="flex justify-end pt-4 border-t">
+                  <Button onClick={() => {
+                    setSelectedExpense(null)
+                    onEdit(selectedExpense)
+                  }}>
+                    <Pencil className="mr-2 h-4 w-4" />
+                    Editar Gasto
+                  </Button>
                 </div>
               )}
             </div>

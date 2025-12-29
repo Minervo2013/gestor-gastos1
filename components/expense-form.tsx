@@ -16,20 +16,24 @@ import { getCurrentUser } from "@/lib/auth"
 
 interface ExpenseFormProps {
   onSubmit: (expense: Expense) => void
+  initialData?: Expense
+  isEditing?: boolean
 }
 
-export function ExpenseForm({ onSubmit }: ExpenseFormProps) {
+export function ExpenseForm({ onSubmit, initialData, isEditing = false }: ExpenseFormProps) {
   const [formData, setFormData] = useState({
-    fechaGasto: new Date().toISOString().split("T")[0],
-    motivo: "",
-    detalle: "",
-    monto: "",
-    moneda: "ARS",
-    tipoCambio: "",
-    canalPago: "" as "" | "web" | "local" | "otro",
-    canalPagoDetalle: "",
-    tieneCuotas: false,
-    cantidadCuotas: "",
+    fechaGasto: initialData?.fechaGasto
+      ? new Date(initialData.fechaGasto).toISOString().split("T")[0]
+      : new Date().toISOString().split("T")[0],
+    motivo: initialData?.motivo || "",
+    detalle: initialData?.detalle || "",
+    monto: initialData?.monto?.toString() || "",
+    moneda: initialData?.moneda || "ARS",
+    tipoCambio: initialData?.tipoCambio?.toString() || "",
+    canalPago: (initialData?.canalPago || "") as "" | "web" | "local" | "otro",
+    canalPagoDetalle: initialData?.canalPagoDetalle || "",
+    tieneCuotas: initialData?.tieneCuotas || false,
+    cantidadCuotas: initialData?.cantidadCuotas?.toString() || "",
   })
 
   const [documento, setDocumento] = useState<{
@@ -37,10 +41,20 @@ export function ExpenseForm({ onSubmit }: ExpenseFormProps) {
     url?: string
     nombre: string
     tipo: string
-  } | null>(null)
-  
+  } | null>(
+    initialData?.documento
+      ? {
+          url: initialData.documento,
+          nombre: initialData.documentoNombre || "documento",
+          tipo: initialData.documentoTipo || "",
+        }
+      : null
+  )
+
   const [uploading, setUploading] = useState(false)
-  const [montoEnPesos, setMontoEnPesos] = useState<number>(0)
+  const [montoEnPesos, setMontoEnPesos] = useState<number>(
+    initialData?.montoEnPesos || 0
+  )
 
   // Actualizar monto en pesos cuando cambian los valores
   const updateMontoEnPesos = (newFormData: typeof formData) => {
@@ -195,7 +209,7 @@ export function ExpenseForm({ onSubmit }: ExpenseFormProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-xl">Registrar Gasto</CardTitle>
+        <CardTitle className="text-xl">{isEditing ? "Editar Gasto" : "Registrar Gasto"}</CardTitle>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -391,7 +405,11 @@ export function ExpenseForm({ onSubmit }: ExpenseFormProps) {
           </div>
 
           <Button type="submit" className="w-full" disabled={uploading}>
-            {uploading ? "Subiendo archivo..." : "Registrar Gasto"}
+            {uploading
+              ? "Subiendo archivo..."
+              : isEditing
+              ? "Actualizar Gasto"
+              : "Registrar Gasto"}
           </Button>
         </form>
       </CardContent>
