@@ -254,7 +254,7 @@ export function ExpenseForm({ onSubmit, initialData, isEditing = false }: Expens
                 value={formData.canalPagoDetalle}
                 onChange={(e) => setFormData({ ...formData, canalPagoDetalle: e.target.value })}
                 placeholder={getCanalPagoDetalleConfig().placeholder}
-                type={formData.canalPago === "web" ? "url" : "text"}
+                type="text"
                 required
               />
             </div>
