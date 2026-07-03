@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { ExpenseForm } from "@/components/expense-form"
 import { ExpenseTable } from "@/components/expense-table"
 import type { Expense, Tarjeta } from "@/lib/types"
-import { Receipt, LogOut, CreditCard, Eye, Download, Plus, Trash2 } from "lucide-react"
+import { Receipt, LogOut, CreditCard, Eye, Download, Plus, Trash2, CalendarDays, X } from "lucide-react"
 import { getCurrentUser, logout } from "@/lib/auth"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -37,6 +37,10 @@ export default function ExpensesPage() {
   const [newCardUltimos4, setNewCardUltimos4] = useState("")
   const [newCardDescripcion, setNewCardDescripcion] = useState("")
   const [isAddingCard, setIsAddingCard] = useState(false)
+
+  // Filtro de fechas
+  const [dateFrom, setDateFrom] = useState("")
+  const [dateTo, setDateTo] = useState("")
 
   const loadUserExpenses = async (userId: string) => {
     try {
@@ -231,6 +235,15 @@ export default function ExpensesPage() {
     return null
   }
 
+  const filteredExpenses = expenses.filter((e) => {
+    const fecha = e.fechaGasto.split("T")[0]
+    if (dateFrom && fecha < dateFrom) return false
+    if (dateTo && fecha > dateTo) return false
+    return true
+  })
+
+  const hasFilter = dateFrom || dateTo
+
   return (
     <div className="page-container">
       <header className="gradient-header shadow-lg">
@@ -281,8 +294,56 @@ export default function ExpensesPage() {
           <div className="lg:sticky lg:top-8 lg:self-start">
             <ExpenseForm onSubmit={handleAddExpense} cards={cards} />
           </div>
-          <div>
-            <ExpenseTable expenses={expenses} onEdit={(expense) => setEditingExpense(expense)} />
+          <div className="space-y-4">
+            {/* Filtro de fechas */}
+            <div className="flex flex-wrap items-end gap-3 rounded-lg border bg-card p-4">
+              <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                <CalendarDays className="h-4 w-4" />
+                Filtrar por fecha
+              </div>
+              <div className="flex flex-wrap gap-3 flex-1">
+                <div className="flex flex-col gap-1">
+                  <Label htmlFor="dateFrom" className="text-xs text-muted-foreground">Desde</Label>
+                  <Input
+                    id="dateFrom"
+                    type="date"
+                    value={dateFrom}
+                    onChange={(e) => setDateFrom(e.target.value)}
+                    className="h-8 w-40 text-sm"
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <Label htmlFor="dateTo" className="text-xs text-muted-foreground">Hasta</Label>
+                  <Input
+                    id="dateTo"
+                    type="date"
+                    value={dateTo}
+                    onChange={(e) => setDateTo(e.target.value)}
+                    className="h-8 w-40 text-sm"
+                  />
+                </div>
+                {hasFilter && (
+                  <div className="flex flex-col justify-end">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 gap-1 text-xs text-muted-foreground"
+                      onClick={() => { setDateFrom(""); setDateTo("") }}
+                    >
+                      <X className="h-3 w-3" />
+                      Limpiar
+                    </Button>
+                  </div>
+                )}
+              </div>
+              {hasFilter && (
+                <p className="w-full text-xs text-muted-foreground">
+                  Mostrando {filteredExpenses.length} de {expenses.length} gastos
+                </p>
+              )}
+            </div>
+
+            <ExpenseTable expenses={filteredExpenses} onEdit={(expense) => setEditingExpense(expense)} />
           </div>
         </div>
       </main>
