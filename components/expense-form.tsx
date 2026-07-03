@@ -11,16 +11,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Switch } from "@/components/ui/switch"
 import { Upload, X } from "lucide-react"
-import { type Expense, MONEDAS } from "@/lib/types"
+import { type Expense, type Tarjeta, MONEDAS } from "@/lib/types"
 import { getCurrentUser } from "@/lib/auth"
 
 interface ExpenseFormProps {
   onSubmit: (expense: Expense) => void
   initialData?: Expense
   isEditing?: boolean
+  cards?: Tarjeta[]
 }
 
-export function ExpenseForm({ onSubmit, initialData, isEditing = false }: ExpenseFormProps) {
+export function ExpenseForm({ onSubmit, initialData, isEditing = false, cards = [] }: ExpenseFormProps) {
   const [formData, setFormData] = useState({
     fechaGasto: initialData?.fechaGasto
       ? new Date(initialData.fechaGasto).toISOString().split("T")[0]
@@ -34,6 +35,7 @@ export function ExpenseForm({ onSubmit, initialData, isEditing = false }: Expens
     canalPagoDetalle: initialData?.canalPagoDetalle || "",
     tieneCuotas: initialData?.tieneCuotas || false,
     cantidadCuotas: initialData?.cantidadCuotas?.toString() || "",
+    tarjetaId: initialData?.tarjetaId || "",
   })
 
   const [documento, setDocumento] = useState<{
@@ -141,12 +143,13 @@ export function ExpenseForm({ onSubmit, initialData, isEditing = false }: Expens
 
       // Subir archivo si existe
       if (documento?.file) {
-        documentoUrl = await uploadFile(documento.file, expenseId)
-        if (!documentoUrl) {
+        const uploaded = await uploadFile(documento.file, expenseId)
+        if (!uploaded) {
           alert("Error al subir el archivo. Inténtalo de nuevo.")
           setUploading(false)
           return
         }
+        documentoUrl = uploaded
       }
 
       const expense: Expense = {
@@ -156,7 +159,7 @@ export function ExpenseForm({ onSubmit, initialData, isEditing = false }: Expens
         motivo: formData.motivo,
         detalle: formData.detalle,
         monto,
-        montoEnPesos: montoEnPesosArgentinos, // Calculamos pero no enviamos por ahora
+        montoEnPesos: montoEnPesosArgentinos,
         importeTotal,
         moneda: formData.moneda,
         tipoCambio: formData.tipoCambio ? Number.parseFloat(formData.tipoCambio) : undefined,
@@ -164,6 +167,7 @@ export function ExpenseForm({ onSubmit, initialData, isEditing = false }: Expens
         canalPagoDetalle: formData.canalPagoDetalle || undefined,
         tieneCuotas: formData.tieneCuotas,
         cantidadCuotas: formData.tieneCuotas ? cantidadCuotas : undefined,
+        tarjetaId: formData.tarjetaId || undefined,
         documento: documentoUrl,
         documentoNombre: documento?.nombre,
         documentoTipo: documento?.tipo,
@@ -189,6 +193,7 @@ export function ExpenseForm({ onSubmit, initialData, isEditing = false }: Expens
       canalPagoDetalle: "",
       tieneCuotas: false,
       cantidadCuotas: "",
+      tarjetaId: "",
     })
     setDocumento(null)
   }
@@ -383,6 +388,28 @@ export function ExpenseForm({ onSubmit, initialData, isEditing = false }: Expens
                 placeholder="Ej: 12"
                 required={formData.tieneCuotas}
               />
+            </div>
+          )}
+
+          {cards.length > 0 && (
+            <div className="space-y-2">
+              <Label htmlFor="tarjetaId">Tarjeta utilizada</Label>
+              <Select
+                value={formData.tarjetaId}
+                onValueChange={(value) => setFormData({ ...formData, tarjetaId: value })}
+                required
+              >
+                <SelectTrigger id="tarjetaId">
+                  <SelectValue placeholder="Seleccionar tarjeta" />
+                </SelectTrigger>
+                <SelectContent>
+                  {cards.map((card) => (
+                    <SelectItem key={card.id} value={card.id}>
+                      **** {card.ultimos4}{card.descripcion ? ` — ${card.descripcion}` : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           )}
 

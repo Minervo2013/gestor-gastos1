@@ -4,7 +4,7 @@ import { prisma } from "@/lib/db"
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { userId, periodo, archivo, archivoNombre, archivoTipo, descripcion, adminUserId } = body
+    const { userId, periodo, archivo, archivoNombre, archivoTipo, descripcion, adminUserId, tarjetaId } = body
 
     if (!userId || !periodo || !archivo || !archivoNombre || !archivoTipo || !adminUserId) {
       return NextResponse.json(
@@ -46,6 +46,10 @@ export async function POST(request: NextRequest) {
         archivoNombre,
         archivoTipo,
         descripcion: descripcion || null,
+        tarjetaId: tarjetaId || null,
+      },
+      include: {
+        tarjeta: { select: { id: true, ultimos4: true, descripcion: true } },
       },
     })
 
@@ -77,6 +81,9 @@ export async function GET(request: NextRequest) {
     // Obtener todos los resúmenes del usuario, ordenados por período descendente
     const cardSummaries = await prisma.cardSummary.findMany({
       where: { userId },
+      include: {
+        tarjeta: { select: { id: true, ultimos4: true, descripcion: true } },
+      },
       orderBy: { periodo: "desc" },
     })
 

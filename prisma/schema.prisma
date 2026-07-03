@@ -24,6 +24,7 @@ model User {
 
   expenses         Expense[]
   cardSummaries    CardSummary[]
+  tarjetas         Tarjeta[]
 
   @@map("users")
 }
@@ -53,7 +54,26 @@ model Expense {
   userId             String
   user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  // Tarjeta utilizada (opcional para gastos anteriores)
+  tarjetaId          String?
+  tarjeta            Tarjeta?  @relation(fields: [tarjetaId], references: [id], onDelete: SetNull)
+
   @@map("expenses")
+}
+
+model Tarjeta {
+  id          String    @id @default(cuid())
+  ultimos4    String
+  descripcion String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  userId        String
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expenses      Expense[]
+  cardSummaries CardSummary[]
+
+  @@map("tarjetas")
 }
 
 model CardSummary {
@@ -69,6 +89,10 @@ model CardSummary {
   // Relación con el usuario
   userId             String
   user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Tarjeta a la que pertenece el resumen (opcional)
+  tarjetaId          String?
+  tarjeta            Tarjeta?  @relation(fields: [tarjetaId], references: [id], onDelete: SetNull)
 
   @@map("card_summaries")
   @@index([userId, periodo])

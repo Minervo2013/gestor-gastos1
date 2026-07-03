@@ -36,6 +36,13 @@ export async function GET(request: NextRequest) {
             sector: true,
             tarjetaUltimos4: true,
           }
+        },
+        tarjeta: {
+          select: {
+            id: true,
+            ultimos4: true,
+            descripcion: true,
+          }
         }
       },
       orderBy: { fechaGasto: 'desc' }

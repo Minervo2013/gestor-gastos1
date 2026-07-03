@@ -3,12 +3,14 @@
 import { useState, useEffect } from "react"
 import { ExpenseForm } from "@/components/expense-form"
 import { ExpenseTable } from "@/components/expense-table"
-import type { Expense, UserExpense } from "@/lib/types"
-import { Receipt, LogOut, CreditCard, Eye, Download } from "lucide-react"
+import type { Expense, Tarjeta } from "@/lib/types"
+import { Receipt, LogOut, CreditCard, Eye, Download, Plus, Trash2 } from "lucide-react"
 import { getCurrentUser, logout } from "@/lib/auth"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 
 type CardSummary = {
   id: string
@@ -18,6 +20,7 @@ type CardSummary = {
   archivoTipo: string
   descripcion?: string
   createdAt: string
+  tarjeta?: { id: string; ultimos4: string; descripcion?: string }
 }
 
 export default function ExpensesPage() {
@@ -27,6 +30,13 @@ export default function ExpensesPage() {
   const [cardSummaries, setCardSummaries] = useState<CardSummary[]>([])
   const [selectedSummary, setSelectedSummary] = useState<CardSummary | null>(null)
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null)
+
+  // Tarjetas
+  const [cards, setCards] = useState<Tarjeta[]>([])
+  const [showCardsDialog, setShowCardsDialog] = useState(false)
+  const [newCardUltimos4, setNewCardUltimos4] = useState("")
+  const [newCardDescripcion, setNewCardDescripcion] = useState("")
+  const [isAddingCard, setIsAddingCard] = useState(false)
 
   const loadUserExpenses = async (userId: string) => {
     try {
@@ -40,6 +50,66 @@ export default function ExpensesPage() {
       }
     } catch (error) {
       console.error('Error al cargar gastos:', error)
+    }
+  }
+
+  const loadCards = async (userId: string) => {
+    try {
+      const response = await fetch(`/api/cards?userId=${userId}`)
+      const data = await response.json()
+      if (data.success) setCards(data.tarjetas)
+    } catch (error) {
+      console.error('Error al cargar tarjetas:', error)
+    }
+  }
+
+  const handleAddCard = async () => {
+    if (!user) return
+    if (!/^\d{4}$/.test(newCardUltimos4)) {
+      alert("Ingresá exactamente 4 dígitos")
+      return
+    }
+    setIsAddingCard(true)
+    try {
+      const response = await fetch('/api/cards', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user.id,
+          ultimos4: newCardUltimos4,
+          descripcion: newCardDescripcion || undefined,
+        }),
+      })
+      const data = await response.json()
+      if (data.success) {
+        setCards(prev => [...prev, data.tarjeta])
+        setNewCardUltimos4("")
+        setNewCardDescripcion("")
+      } else {
+        alert('Error: ' + data.error)
+      }
+    } catch {
+      alert('Error de conexión')
+    } finally {
+      setIsAddingCard(false)
+    }
+  }
+
+  const handleDeleteCard = async (tarjetaId: string) => {
+    if (!user) return
+    if (!confirm("¿Eliminar esta tarjeta?")) return
+    try {
+      const response = await fetch(`/api/cards?tarjetaId=${tarjetaId}&userId=${user.id}`, {
+        method: 'DELETE',
+      })
+      const data = await response.json()
+      if (data.success) {
+        setCards(prev => prev.filter(c => c.id !== tarjetaId))
+      } else {
+        alert('Error: ' + data.error)
+      }
+    } catch {
+      alert('Error de conexión')
     }
   }
 
@@ -81,8 +151,8 @@ export default function ExpensesPage() {
     }
     setUser(currentUser)
 
-    // Cargar gastos del usuario actual desde PostgreSQL
     loadUserExpenses(currentUser.id)
+    loadCards(currentUser.id)
   }, [])
 
   const handleAddExpense = (expense: Expense) => {
@@ -179,10 +249,22 @@ export default function ExpensesPage() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={handleOpenSummaries}
+                onClick={() => setShowCardsDialog(true)}
                 className="bg-white/10 border-white/30 text-white hover:bg-white/20"
               >
                 <CreditCard className="mr-2 h-4 w-4" />
+                Mis Tarjetas
+                {cards.length > 0 && (
+                  <span className="ml-1 rounded-full bg-white/20 px-1.5 text-xs">{cards.length}</span>
+                )}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleOpenSummaries}
+                className="bg-white/10 border-white/30 text-white hover:bg-white/20"
+              >
+                <Eye className="mr-2 h-4 w-4" />
                 Ver Resúmenes
               </Button>
               <Button variant="outline" size="sm" onClick={handleLogout} className="bg-white/10 border-white/30 text-white hover:bg-white/20">
@@ -197,7 +279,7 @@ export default function ExpensesPage() {
       <main className="container mx-auto px-4 py-6 sm:py-8">
         <div className="mx-auto grid max-w-7xl gap-6 sm:gap-8 lg:grid-cols-[400px_1fr]">
           <div className="lg:sticky lg:top-8 lg:self-start">
-            <ExpenseForm onSubmit={handleAddExpense} />
+            <ExpenseForm onSubmit={handleAddExpense} cards={cards} />
           </div>
           <div>
             <ExpenseTable expenses={expenses} onEdit={(expense) => setEditingExpense(expense)} />
@@ -223,6 +305,7 @@ export default function ExpensesPage() {
                 onSubmit={handleEditExpense}
                 initialData={editingExpense}
                 isEditing={true}
+                cards={cards}
               />
             )}
           </div>
@@ -258,6 +341,11 @@ export default function ExpensesPage() {
                         <div>
                           <CardTitle className="text-lg">
                             {formatPeriod(summary.periodo)}
+                            {summary.tarjeta && (
+                              <span className="ml-2 text-sm font-mono font-normal text-muted-foreground">
+                                **** {summary.tarjeta.ultimos4}
+                              </span>
+                            )}
                           </CardTitle>
                           {summary.descripcion && (
                             <CardDescription className="mt-1">
@@ -286,6 +374,78 @@ export default function ExpensesPage() {
                 ))}
               </div>
             )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showCardsDialog} onOpenChange={setShowCardsDialog}>
+        <DialogContent
+          className="sm:max-w-md border shadow-lg"
+          style={{ backgroundColor: '#ffffff', backdropFilter: 'none', opacity: 1 }}
+        >
+          <DialogHeader style={{ backgroundColor: '#ffffff' }}>
+            <DialogTitle>Mis Tarjetas</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4" style={{ backgroundColor: '#ffffff' }}>
+            {/* Lista de tarjetas existentes */}
+            {cards.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-2">
+                No tenés tarjetas agregadas todavía.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {cards.map((card) => (
+                  <div key={card.id} className="flex items-center justify-between rounded-lg border p-3">
+                    <div>
+                      <p className="font-mono font-medium">**** {card.ultimos4}</p>
+                      {card.descripcion && (
+                        <p className="text-xs text-muted-foreground">{card.descripcion}</p>
+                      )}
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDeleteCard(card.id)}
+                      className="text-destructive hover:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Formulario para agregar tarjeta */}
+            <div className="border-t pt-4 space-y-3">
+              <p className="text-sm font-medium">Agregar tarjeta</p>
+              <div className="space-y-2">
+                <Label htmlFor="nuevaUltimos4">Últimos 4 dígitos</Label>
+                <Input
+                  id="nuevaUltimos4"
+                  maxLength={4}
+                  placeholder="1234"
+                  value={newCardUltimos4}
+                  onChange={(e) => setNewCardUltimos4(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="nuevaDescripcion">Descripción (opcional)</Label>
+                <Input
+                  id="nuevaDescripcion"
+                  placeholder="Ej: Visa corporativa"
+                  value={newCardDescripcion}
+                  onChange={(e) => setNewCardDescripcion(e.target.value)}
+                />
+              </div>
+              <Button
+                className="w-full"
+                onClick={handleAddCard}
+                disabled={isAddingCard || newCardUltimos4.length !== 4}
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                {isAddingCard ? "Agregando..." : "Agregar tarjeta"}
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

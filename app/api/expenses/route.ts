@@ -22,6 +22,13 @@ export async function GET(request: NextRequest) {
             email: true,
             nombre: true,
           }
+        },
+        tarjeta: {
+          select: {
+            id: true,
+            ultimos4: true,
+            descripcion: true,
+          }
         }
       },
       orderBy: { fechaGasto: 'desc' }
@@ -62,7 +69,8 @@ export async function POST(request: NextRequest) {
       cantidadCuotas,
       documento,
       documentoNombre,
-      documentoTipo
+      documentoTipo,
+      tarjetaId,
     } = body;
 
     // Validaciones básicas
@@ -131,6 +139,7 @@ export async function POST(request: NextRequest) {
       canalPagoDetalle,
       tieneCuotas: Boolean(tieneCuotas),
       cantidadCuotas: cantidadCuotas ? parseInt(cantidadCuotas) : null,
+      tarjetaId: tarjetaId || null,
       documento,
       documentoNombre,
       documentoTipo,
@@ -140,17 +149,17 @@ export async function POST(request: NextRequest) {
 
     const expense = await prisma.$queryRaw`
       INSERT INTO expenses (
-        id, "userId", "fechaGasto", motivo, detalle, monto, "montoEnPesos", 
-        "importeTotal", moneda, "tipoCambio", "canalPago", "canalPagoDetalle", 
-        "tieneCuotas", "cantidadCuotas", documento, "documentoNombre", 
+        id, "userId", "fechaGasto", motivo, detalle, monto, "montoEnPesos",
+        "importeTotal", moneda, "tipoCambio", "canalPago", "canalPagoDetalle",
+        "tieneCuotas", "cantidadCuotas", "tarjetaId", documento, "documentoNombre",
         "documentoTipo", "createdAt", "updatedAt"
       ) VALUES (
-        ${expenseData.id}, ${expenseData.userId}, ${expenseData.fechaGasto}, 
-        ${expenseData.motivo}, ${expenseData.detalle}, ${expenseData.monto}, 
-        ${expenseData.montoEnPesos}, ${expenseData.importeTotal}, ${expenseData.moneda}, 
-        ${expenseData.tipoCambio}, ${expenseData.canalPago}, ${expenseData.canalPagoDetalle}, 
-        ${expenseData.tieneCuotas}, ${expenseData.cantidadCuotas}, ${expenseData.documento}, 
-        ${expenseData.documentoNombre}, ${expenseData.documentoTipo}, 
+        ${expenseData.id}, ${expenseData.userId}, ${expenseData.fechaGasto},
+        ${expenseData.motivo}, ${expenseData.detalle}, ${expenseData.monto},
+        ${expenseData.montoEnPesos}, ${expenseData.importeTotal}, ${expenseData.moneda},
+        ${expenseData.tipoCambio}, ${expenseData.canalPago}, ${expenseData.canalPagoDetalle},
+        ${expenseData.tieneCuotas}, ${expenseData.cantidadCuotas}, ${expenseData.tarjetaId},
+        ${expenseData.documento}, ${expenseData.documentoNombre}, ${expenseData.documentoTipo},
         ${expenseData.createdAt}, ${expenseData.updatedAt}
       ) RETURNING *;
     `;
@@ -202,7 +211,8 @@ export async function PUT(request: NextRequest) {
       cantidadCuotas,
       documento,
       documentoNombre,
-      documentoTipo
+      documentoTipo,
+      tarjetaId,
     } = body;
 
     // Validaciones básicas
@@ -261,6 +271,7 @@ export async function PUT(request: NextRequest) {
         "canalPagoDetalle" = ${canalPagoDetalle},
         "tieneCuotas" = ${Boolean(tieneCuotas)},
         "cantidadCuotas" = ${cantidadCuotas ? parseInt(cantidadCuotas) : null},
+        "tarjetaId" = ${tarjetaId || null},
         documento = ${documento},
         "documentoNombre" = ${documentoNombre},
         "documentoTipo" = ${documentoTipo},

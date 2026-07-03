@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { getCurrentUser, logout } from "@/lib/auth"
-import type { UserExpense, User } from "@/lib/types"
+import type { UserExpense, User, Tarjeta } from "@/lib/types"
 import { Receipt, LogOut, Eye, Printer, Filter, FileText, Download, Upload, CreditCard } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -25,6 +25,8 @@ export default function AdminPage() {
   const [summaryFile, setSummaryFile] = useState<File | null>(null)
   const [summaryDescription, setSummaryDescription] = useState("")
   const [isUploadingSummary, setIsUploadingSummary] = useState(false)
+  const [summaryTarjetaId, setSummaryTarjetaId] = useState("")
+  const [userCardsForSummary, setUserCardsForSummary] = useState<Tarjeta[]>([])
 
   const formatCurrency = (amount: number, currency: string) => {
     return new Intl.NumberFormat("es-AR", {
@@ -44,7 +46,7 @@ export default function AdminPage() {
         setFilteredExpenses(data.expenses)
         
         // Obtener usuarios únicos
-        const users = Array.from(new Map(data.expenses.map((e: UserExpense) => [e.userId, { id: e.userId, name: e.userName }])).values())
+        const users = Array.from(new Map(data.expenses.map((e: UserExpense) => [e.userId, { id: e.userId, name: e.userName }])).values()) as { id: string; name: string }[]
         setUniqueUsers(users)
       } else {
         console.error('Error cargando gastos:', data.error)
@@ -672,12 +674,24 @@ export default function AdminPage() {
     `;
   };
 
-  const handleOpenUploadSummary = (selectedUser: { id: string; name: string }) => {
+  const handleOpenUploadSummary = async (selectedUser: { id: string; name: string }) => {
     setSelectedUserForSummary(selectedUser)
     const currentMonth = new Date().toISOString().slice(0, 7)
     setSummaryPeriod(currentMonth)
     setSummaryFile(null)
     setSummaryDescription("")
+    setSummaryTarjetaId("")
+    setUserCardsForSummary([])
+
+    // Cargar tarjetas del usuario seleccionado
+    try {
+      const response = await fetch(`/api/cards?userId=${selectedUser.id}`)
+      const data = await response.json()
+      if (data.success) setUserCardsForSummary(data.tarjetas)
+    } catch {
+      // Si falla, simplemente no se muestran tarjetas
+    }
+
     setShowUploadSummaryDialog(true)
   }
 
@@ -714,6 +728,7 @@ export default function AdminPage() {
             archivoTipo: summaryFile.type,
             descripcion: summaryDescription,
             adminUserId: user.id,
+            tarjetaId: summaryTarjetaId && summaryTarjetaId !== "none" ? summaryTarjetaId : undefined,
           }),
         })
 
@@ -1070,6 +1085,25 @@ export default function AdminPage() {
               <Label className="text-sm font-medium">Usuario</Label>
               <p className="text-lg font-semibold">{selectedUserForSummary?.name}</p>
             </div>
+
+            {userCardsForSummary.length > 0 && (
+              <div>
+                <Label htmlFor="summaryTarjeta">Tarjeta</Label>
+                <Select value={summaryTarjetaId} onValueChange={setSummaryTarjetaId}>
+                  <SelectTrigger id="summaryTarjeta">
+                    <SelectValue placeholder="Seleccionar tarjeta (opcional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Sin tarjeta específica</SelectItem>
+                    {userCardsForSummary.map((card) => (
+                      <SelectItem key={card.id} value={card.id}>
+                        **** {card.ultimos4}{card.descripcion ? ` — ${card.descripcion}` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             <div>
               <Label htmlFor="periodo">Período (Mes/Año)</Label>

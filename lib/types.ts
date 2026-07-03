@@ -1,3 +1,11 @@
+export interface Tarjeta {
+  id: string
+  ultimos4: string
+  descripcion?: string
+  userId: string
+  createdAt: Date
+}
+
 export interface Expense {
   id: string
   fechaGasto: string // Fecha del gasto real
@@ -16,6 +24,8 @@ export interface Expense {
   documento?: string // Base64 del archivo o URL
   documentoNombre?: string
   documentoTipo?: string
+  tarjetaId?: string
+  tarjeta?: { id: string; ultimos4: string; descripcion?: string }
 }
 
 export const MONEDAS = ["ARS", "USD", "EUR", "BRL", "CLP"] as const

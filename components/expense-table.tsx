@@ -110,6 +110,13 @@ export function ExpenseTable({ expenses, onEdit }: ExpenseTableProps) {
                 </Badge>
               </div>
 
+              {expense.tarjeta && (
+                <p className="text-sm font-mono text-muted-foreground">
+                  Tarjeta: **** {expense.tarjeta.ultimos4}
+                  {expense.tarjeta.descripcion ? ` — ${expense.tarjeta.descripcion}` : ""}
+                </p>
+              )}
+
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Monto</p>
@@ -168,6 +175,7 @@ export function ExpenseTable({ expenses, onEdit }: ExpenseTableProps) {
               <TableRow>
                 <TableHead>Fecha Gasto</TableHead>
                 <TableHead>Motivo</TableHead>
+                <TableHead>Tarjeta</TableHead>
                 <TableHead>Monto</TableHead>
                 <TableHead>Cuotas</TableHead>
                 <TableHead>Total (ARS)</TableHead>
@@ -180,6 +188,13 @@ export function ExpenseTable({ expenses, onEdit }: ExpenseTableProps) {
                 <TableRow key={expense.id}>
                   <TableCell className="font-medium">{formatDate(expense.fechaGasto)}</TableCell>
                   <TableCell className="max-w-[200px] truncate">{expense.motivo}</TableCell>
+                  <TableCell className="text-sm font-mono">
+                    {expense.tarjeta ? (
+                      <span title={expense.tarjeta.descripcion}>**** {expense.tarjeta.ultimos4}</span>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
+                  </TableCell>
                   <TableCell>{formatCurrency(expense.monto, expense.moneda)}</TableCell>
                   <TableCell>
                     {expense.tieneCuotas ? (
@@ -290,6 +305,20 @@ export function ExpenseTable({ expenses, onEdit }: ExpenseTableProps) {
                   </div>
                 )}
               </div>
+
+              {selectedExpense.tarjeta && (
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Tarjeta utilizada</p>
+                  <p className="text-lg font-mono">
+                    **** {selectedExpense.tarjeta.ultimos4}
+                    {selectedExpense.tarjeta.descripcion && (
+                      <span className="ml-2 text-sm font-sans text-muted-foreground">
+                        ({selectedExpense.tarjeta.descripcion})
+                      </span>
+                    )}
+                  </p>
+                </div>
+              )}
 
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Canal de Pago</p>

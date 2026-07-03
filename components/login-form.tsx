@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { getUserByEmail, setCurrentUser } from "@/lib/auth"
 import { LogIn } from "lucide-react"
+import { signIn } from "next-auth/react"
 import { VerificationForm } from "./verification-form"
 
 interface LoginFormProps {
@@ -97,48 +98,77 @@ export function LoginForm({ onLogin, onSwitchToRegister }: LoginFormProps) {
           <LogIn className="h-5 w-5" />
           <CardTitle className="text-2xl">Iniciar Sesión</CardTitle>
         </div>
-        <CardDescription>Ingresa tu email para acceder al sistema</CardDescription>
+        <CardDescription>Usá tu cuenta corporativa de Microsoft para entrar</CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              placeholder="tu@email.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              disabled={loading}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="password">Contraseña</Label>
-            <Input
-              id="password"
-              type="password"
-              placeholder="Ingresa tu contraseña"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              disabled={loading}
-            />
-          </div>
-
-          {error && <p className="text-sm text-destructive">{error}</p>}
-
-          <Button type="submit" className="w-full button-elegant" disabled={loading}>
-            {loading ? "Iniciando..." : "Iniciar Sesión"}
+        <div className="space-y-4">
+          {/* Botón Microsoft — opción principal */}
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full flex items-center gap-3 h-11 text-base font-medium border-2 hover:bg-accent"
+            disabled={loading}
+            onClick={() => signIn("azure-ad", { callbackUrl: "/auth/microsoft/callback" })}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 23 23" className="h-5 w-5 shrink-0">
+              <path fill="#f3f3f3" d="M0 0h23v23H0z"/>
+              <path fill="#f35325" d="M1 1h10v10H1z"/>
+              <path fill="#81bc06" d="M12 1h10v10H12z"/>
+              <path fill="#05a6f0" d="M1 12h10v10H1z"/>
+              <path fill="#ffba08" d="M12 12h10v10H12z"/>
+            </svg>
+            Iniciar sesión con Microsoft
           </Button>
+
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-background px-2 text-muted-foreground">o con contraseña</span>
+            </div>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="tu@pueblaequipo.com.ar"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                disabled={loading}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="password">Contraseña</Label>
+              <Input
+                id="password"
+                type="password"
+                placeholder="Ingresa tu contraseña"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                disabled={loading}
+              />
+            </div>
+
+            {error && <p className="text-sm text-destructive">{error}</p>}
+
+            <Button type="submit" className="w-full button-elegant" disabled={loading}>
+              {loading ? "Iniciando..." : "Iniciar Sesión"}
+            </Button>
+          </form>
 
           <div className="text-center">
             <Button type="button" variant="link" onClick={onSwitchToRegister} className="text-sm text-primary hover:text-accent transition-colors" disabled={loading}>
               ¿No tienes cuenta? Regístrate aquí
             </Button>
           </div>
-        </form>
+        </div>
       </CardContent>
     </Card>
   )
