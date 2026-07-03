@@ -290,13 +290,17 @@ export default function ExpensesPage() {
       </header>
 
       <main className="container mx-auto px-4 py-6 sm:py-8">
-        <div className="mx-auto grid max-w-7xl gap-6 sm:gap-8 lg:grid-cols-[400px_1fr]">
-          <div className="lg:sticky lg:top-8 lg:self-start">
+        <div className="mx-auto grid max-w-7xl gap-6 sm:gap-8 lg:grid-cols-[400px_1fr] lg:items-start lg:h-[calc(100vh-8rem)]">
+
+          {/* Columna izquierda: formulario con scroll propio */}
+          <div className="lg:h-full lg:overflow-y-auto lg:pr-1">
             <ExpenseForm onSubmit={handleAddExpense} cards={cards} />
           </div>
-          <div className="space-y-4">
+
+          {/* Columna derecha: filtro + tabla con scroll propio */}
+          <div className="flex flex-col gap-4 lg:h-full lg:min-h-0">
             {/* Filtro de fechas */}
-            <div className="flex flex-wrap items-end gap-3 rounded-lg border bg-card p-4">
+            <div className="flex flex-wrap items-end gap-3 rounded-lg border bg-card p-4 shrink-0">
               <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
                 <CalendarDays className="h-4 w-4" />
                 Filtrar por fecha
@@ -343,8 +347,12 @@ export default function ExpensesPage() {
               )}
             </div>
 
-            <ExpenseTable expenses={filteredExpenses} onEdit={(expense) => setEditingExpense(expense)} />
+            {/* Tabla con scroll independiente */}
+            <div className="lg:overflow-y-auto lg:min-h-0 lg:flex-1">
+              <ExpenseTable expenses={filteredExpenses} onEdit={(expense) => setEditingExpense(expense)} />
+            </div>
           </div>
+
         </div>
       </main>
 
