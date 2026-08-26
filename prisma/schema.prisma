@@ -63,6 +63,10 @@ model Expense {
   recurringExpenseId String?
   recurringExpense   RecurringExpense? @relation(fields: [recurringExpenseId], references: [id], onDelete: SetNull)
 
+  // Unidad de negocio a la que se destina el gasto (puede ser distinta a la unidad de la tarjeta)
+  unidadDestinoId    String?
+  unidadDestino      Unidad?   @relation(fields: [unidadDestinoId], references: [id], onDelete: SetNull)
+
   @@map("expenses")
 }
 
@@ -94,6 +98,7 @@ model Unidad {
   updatedAt   DateTime  @updatedAt
 
   tarjetas    Tarjeta[]
+  gastosDestino Expense[]
 
   @@map("unidades")
 }

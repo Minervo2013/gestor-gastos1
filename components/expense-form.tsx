@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Switch } from "@/components/ui/switch"
 import { Upload, X } from "lucide-react"
-import { type Expense, type Tarjeta, MONEDAS } from "@/lib/types"
+import { type Expense, type Tarjeta, type Unidad, MONEDAS } from "@/lib/types"
 import { getCurrentUser } from "@/lib/auth"
 
 interface ExpenseFormProps {
@@ -19,9 +19,10 @@ interface ExpenseFormProps {
   initialData?: Expense
   isEditing?: boolean
   cards?: Tarjeta[]
+  unidades?: Unidad[]
 }
 
-export function ExpenseForm({ onSubmit, initialData, isEditing = false, cards = [] }: ExpenseFormProps) {
+export function ExpenseForm({ onSubmit, initialData, isEditing = false, cards = [], unidades = [] }: ExpenseFormProps) {
   const [formData, setFormData] = useState({
     fechaGasto: initialData?.fechaGasto
       ? new Date(initialData.fechaGasto).toISOString().split("T")[0]
@@ -36,6 +37,7 @@ export function ExpenseForm({ onSubmit, initialData, isEditing = false, cards = 
     tieneCuotas: initialData?.tieneCuotas || false,
     cantidadCuotas: initialData?.cantidadCuotas?.toString() || "",
     tarjetaId: initialData?.tarjetaId || "",
+    unidadDestinoId: initialData?.unidadDestinoId || "",
   })
 
   const [documento, setDocumento] = useState<{
@@ -168,6 +170,7 @@ export function ExpenseForm({ onSubmit, initialData, isEditing = false, cards = 
         tieneCuotas: formData.tieneCuotas,
         cantidadCuotas: formData.tieneCuotas ? cantidadCuotas : undefined,
         tarjetaId: formData.tarjetaId || undefined,
+        unidadDestinoId: formData.unidadDestinoId || undefined,
         documento: documentoUrl,
         documentoNombre: documento?.nombre,
         documentoTipo: documento?.tipo,
@@ -194,6 +197,7 @@ export function ExpenseForm({ onSubmit, initialData, isEditing = false, cards = 
       tieneCuotas: false,
       cantidadCuotas: "",
       tarjetaId: "",
+      unidadDestinoId: "",
     })
     setDocumento(null)
   }
@@ -410,6 +414,30 @@ export function ExpenseForm({ onSubmit, initialData, isEditing = false, cards = 
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+          )}
+
+          {unidades.length > 0 && (
+            <div className="space-y-2">
+              <Label htmlFor="unidadDestinoId">Unidad a la que se destina el gasto</Label>
+              <Select
+                value={formData.unidadDestinoId}
+                onValueChange={(value) => setFormData({ ...formData, unidadDestinoId: value })}
+              >
+                <SelectTrigger id="unidadDestinoId">
+                  <SelectValue placeholder="Seleccionar unidad (opcional)" />
+                </SelectTrigger>
+                <SelectContent>
+                  {unidades.map((unidad) => (
+                    <SelectItem key={unidad.id} value={unidad.id}>
+                      {unidad.nombre}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Si el gasto es para otra unidad distinta a la de tu tarjeta, indicalo acá.
+              </p>
             </div>
           )}
 

@@ -332,6 +332,13 @@ export function ExpenseTable({ expenses, onEdit }: ExpenseTableProps) {
                 </div>
               )}
 
+              {selectedExpense.unidadDestino && (
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Unidad del gasto</p>
+                  <p className="text-lg">{selectedExpense.unidadDestino.nombre}</p>
+                </div>
+              )}
+
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Canal de Pago</p>
                 <div className="flex items-center gap-2 mt-1">

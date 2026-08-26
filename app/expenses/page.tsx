@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { ExpenseForm } from "@/components/expense-form"
 import { ExpenseTable } from "@/components/expense-table"
 import { RecurringExpenseForm } from "@/components/recurring-expense-form"
-import type { Expense, Tarjeta, RecurringExpense } from "@/lib/types"
+import type { Expense, Tarjeta, RecurringExpense, Unidad } from "@/lib/types"
 import { Receipt, LogOut, CreditCard, Eye, Download, Plus, Trash2, CalendarDays, X, Repeat, Power } from "lucide-react"
 import { getCurrentUser, logout } from "@/lib/auth"
 import { Button } from "@/components/ui/button"
@@ -38,6 +38,9 @@ export default function ExpensesPage() {
   const [newCardUltimos4, setNewCardUltimos4] = useState("")
   const [newCardDescripcion, setNewCardDescripcion] = useState("")
   const [isAddingCard, setIsAddingCard] = useState(false)
+
+  // Unidades (para asignar a qué unidad se destina un gasto)
+  const [unidades, setUnidades] = useState<Unidad[]>([])
 
   // Filtro de fechas
   const [dateFrom, setDateFrom] = useState("")
@@ -102,6 +105,16 @@ export default function ExpensesPage() {
       alert('Error de conexión')
     } finally {
       setIsAddingCard(false)
+    }
+  }
+
+  const loadUnidades = async (userId: string) => {
+    try {
+      const response = await fetch(`/api/units?userId=${userId}`)
+      const data = await response.json()
+      if (data.success) setUnidades(data.unidades)
+    } catch (error) {
+      console.error('Error al cargar unidades:', error)
     }
   }
 
@@ -233,6 +246,7 @@ export default function ExpensesPage() {
     loadUserExpenses(currentUser.id)
     loadCards(currentUser.id)
     loadRecurringExpenses(currentUser.id)
+    loadUnidades(currentUser.id)
   }, [])
 
   const handleAddExpense = (expense: Expense) => {
@@ -382,7 +396,7 @@ export default function ExpensesPage() {
 
           {/* Columna izquierda: formulario con scroll propio */}
           <div className="lg:h-full lg:overflow-y-auto lg:pr-1">
-            <ExpenseForm onSubmit={handleAddExpense} cards={cards} />
+            <ExpenseForm onSubmit={handleAddExpense} cards={cards} unidades={unidades} />
           </div>
 
           {/* Columna derecha: filtro + tabla con scroll propio */}
@@ -463,6 +477,7 @@ export default function ExpensesPage() {
                 initialData={editingExpense}
                 isEditing={true}
                 cards={cards}
+                unidades={unidades}
               />
             )}
           </div>

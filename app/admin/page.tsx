@@ -793,6 +793,229 @@ export default function AdminPage() {
     `;
   };
 
+  const handleGenerateUnitReport = async (unidadId: string, unidadNombre: string) => {
+    if (!user) return
+
+    try {
+      const currentMonth = new Date().toISOString().slice(0, 7)
+      const response = await fetch(`/api/reports/unit?unidadId=${unidadId}&month=${currentMonth}&adminUserId=${user.id}`)
+      const reportData = await response.json()
+
+      if (reportData.success) {
+        const reportHtml = generateUnitReportHTML(reportData.data, unidadNombre)
+        const reportWindow = window.open("", "_blank")
+        if (reportWindow) {
+          reportWindow.document.write(reportHtml)
+          reportWindow.document.close()
+        }
+      } else {
+        alert('Error al generar el reporte: ' + reportData.error)
+      }
+    } catch (error) {
+      console.error('Error:', error)
+      alert('Error al generar el reporte')
+    }
+  }
+
+  const generateUnitReportHTML = (data: any, unidadNombre: string) => {
+    const { period, statistics, gastosParaOtrasUnidades, gastosPropios, tarjetas } = data
+
+    const renderGrupo = (grupo: any) => `
+      <div class="grupo-card">
+        <div class="grupo-header">
+          <span class="grupo-nombre">${grupo.unidadNombre}</span>
+          <span class="grupo-total">$${grupo.total.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</span>
+        </div>
+        <table class="expenses-table">
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Motivo</th>
+              <th>Detalle</th>
+              <th>Usuario</th>
+              <th>Tarjeta</th>
+              <th style="text-align:right;">Importe</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${grupo.expenses.map((e: any) => `
+              <tr>
+                <td>${new Date(e.fechaGasto).toLocaleDateString('es-ES', { timeZone: 'UTC' })}</td>
+                <td><strong>${e.motivo}</strong></td>
+                <td>${e.detalle}</td>
+                <td>${e.user?.nombre || '-'}</td>
+                <td>${e.tarjeta ? '**** ' + e.tarjeta.ultimos4 : '-'}</td>
+                <td style="text-align:right;">$${e.importeTotal.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    `
+
+    return `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Reporte de Unidad - ${unidadNombre}</title>
+          <meta charset="UTF-8">
+          <style>
+            body {
+              font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+              margin: 0;
+              padding: 20px;
+              background: #f5f6fa;
+              line-height: 1.6;
+            }
+            .container {
+              max-width: 1400px;
+              margin: 0 auto;
+              background: white;
+              border-radius: 10px;
+              overflow: hidden;
+              box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            }
+            .header {
+              background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+              color: white;
+              padding: 30px;
+              text-align: center;
+            }
+            .header h1 { margin: 0; font-size: 2.2em; font-weight: 400; }
+            .header p { margin: 10px 0 0 0; opacity: 0.9; font-size: 1.1em; }
+            .stats-grid {
+              display: grid;
+              grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+              gap: 15px;
+              padding: 25px;
+              background: #ecf0f1;
+            }
+            .stat-card {
+              background: white;
+              padding: 20px;
+              border-radius: 8px;
+              text-align: center;
+              border-left: 4px solid #3498db;
+              box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            }
+            .stat-value { font-size: 1.8em; font-weight: bold; color: #2c3e50; margin-bottom: 5px; }
+            .stat-label { color: #7f8c8d; font-size: 0.85em; text-transform: uppercase; letter-spacing: 1px; }
+            .section { padding: 25px; }
+            .section-title {
+              color: #2c3e50;
+              margin-bottom: 15px;
+              font-size: 1.5em;
+              font-weight: 600;
+              border-bottom: 2px solid #3498db;
+              padding-bottom: 8px;
+            }
+            .section-subtitle { color: #7f8c8d; margin-bottom: 20px; font-size: 0.95em; }
+            .grupo-card {
+              margin-bottom: 20px;
+              border: 1px solid #dfe6e9;
+              border-radius: 8px;
+              overflow: hidden;
+            }
+            .grupo-header {
+              background: #34495e;
+              color: white;
+              padding: 12px 16px;
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              font-weight: 600;
+            }
+            .grupo-total { font-size: 1.1em; }
+            .expenses-table { width: 100%; border-collapse: collapse; font-size: 0.9em; }
+            .expenses-table th {
+              background: #f8f9fa;
+              padding: 10px 8px;
+              text-align: left;
+              font-weight: 600;
+              border-bottom: 2px solid #dfe6e9;
+            }
+            .expenses-table td { padding: 8px; border-bottom: 1px solid #ecf0f1; vertical-align: top; }
+            .expenses-table tr:nth-child(even) { background: #f8f9fa; }
+            .no-expenses { text-align: center; padding: 40px; color: #7f8c8d; font-size: 1.1em; }
+            .destacado { background: #fff8e1; }
+            @media print {
+              body { background: white; }
+              .container { box-shadow: none; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>Reporte de Unidad</h1>
+              <p>${unidadNombre} - ${period}</p>
+              <p>Generado el ${new Date().toLocaleDateString('es-ES')}</p>
+            </div>
+
+            <div class="stats-grid">
+              <div class="stat-card">
+                <div class="stat-value">$${statistics.totalAmount.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</div>
+                <div class="stat-label">Total gastado con tarjetas de esta unidad</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-value">${statistics.totalExpenses}</div>
+                <div class="stat-label">Total de gastos</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-value">$${statistics.totalParaOtrasUnidades.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</div>
+                <div class="stat-label">Gastado para otras unidades</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-value">${tarjetas.length}</div>
+                <div class="stat-label">Tarjetas de la unidad</div>
+              </div>
+            </div>
+
+            <div class="section">
+              <h2 class="section-title">Gastos asignados a otras unidades</h2>
+              <p class="section-subtitle">
+                Gastos hechos con tarjetas de ${unidadNombre} pero destinados a otra unidad de negocio.
+              </p>
+              ${
+                gastosParaOtrasUnidades.length === 0
+                  ? `<div class="no-expenses">No hay gastos de ${unidadNombre} asignados a otras unidades en este período.</div>`
+                  : gastosParaOtrasUnidades.map(renderGrupo).join('')
+              }
+            </div>
+
+            <div class="section">
+              <h2 class="section-title">Gastos propios de la unidad</h2>
+              <p class="section-subtitle">Gastos hechos con tarjetas de ${unidadNombre} sin reasignar a otra unidad.</p>
+              ${
+                gastosPropios.length === 0
+                  ? `<div class="no-expenses">No hay gastos propios registrados en este período.</div>`
+                  : gastosPropios.map(renderGrupo).join('')
+              }
+            </div>
+          </div>
+
+          <script>
+            function downloadReport() {
+              const htmlContent = document.documentElement.outerHTML;
+              const blob = new Blob([htmlContent], { type: 'text/html' });
+              const url = window.URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = 'reporte-unidad-${unidadNombre.replace(/\s+/g, '-')}-${new Date().toISOString().slice(0, 10)}.html';
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+              window.URL.revokeObjectURL(url);
+            }
+            if (window.location.protocol !== 'file:' && window.opener) {
+              setTimeout(() => { downloadReport(); }, 500);
+            }
+          </script>
+        </body>
+      </html>
+    `
+  }
+
   const handleOpenUploadSummary = async (selectedUser: { id: string; name: string }) => {
     setSelectedUserForSummary(selectedUser)
     const currentMonth = new Date().toISOString().slice(0, 7)
@@ -1009,7 +1232,7 @@ export default function AdminPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="mb-6">
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle>Reportes de Usuarios</CardTitle>
@@ -1032,6 +1255,41 @@ export default function AdminPage() {
                 </div>
               ))}
             </div>
+          </CardContent>
+        </Card>
+
+        <Card className="mb-6">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle>Reportes por Unidad</CardTitle>
+              <Building2 className="h-5 w-5 text-muted-foreground" />
+            </div>
+            <CardDescription>
+              Ver, por unidad, qué gastos hechos con sus tarjetas fueron asignados a otras unidades
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {unidades.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-2">
+                Todavía no hay unidades creadas. Creá una desde "Gestionar Tarjetas y Unidades".
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {unidades.map((u) => (
+                  <div key={u.id} className="flex items-center justify-between p-3 rounded-lg border">
+                    <span className="font-medium">{u.nombre}</span>
+                    <Button
+                      className="button-elegant"
+                      size="sm"
+                      onClick={() => handleGenerateUnitReport(u.id, u.nombre)}
+                    >
+                      <Download className="mr-2 h-4 w-4" />
+                      Generar Reporte
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
 

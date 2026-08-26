@@ -42,6 +42,8 @@ export interface Expense {
   tarjetaId?: string
   tarjeta?: { id: string; ultimos4: string; descripcion?: string; unidad?: { id: string; nombre: string } | null }
   recurringExpenseId?: string
+  unidadDestinoId?: string
+  unidadDestino?: { id: string; nombre: string } | null
 }
 
 export interface RecurringExpense {

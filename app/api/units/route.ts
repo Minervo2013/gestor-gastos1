@@ -11,10 +11,24 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const adminUserId = searchParams.get('adminUserId')
+    const userId = searchParams.get('userId')
 
-    const admin = await requireAdmin(adminUserId)
-    if (!admin) {
-      return NextResponse.json({ error: 'Acceso no autorizado' }, { status: 403 })
+    // Cualquier usuario autenticado puede leer la lista (la necesita para elegir
+    // a qué unidad destina un gasto); crear/borrar unidades sigue siendo solo de admin.
+    if (!adminUserId && !userId) {
+      return NextResponse.json({ error: 'userId o adminUserId es requerido' }, { status: 400 })
+    }
+
+    if (adminUserId) {
+      const admin = await requireAdmin(adminUserId)
+      if (!admin) {
+        return NextResponse.json({ error: 'Acceso no autorizado' }, { status: 403 })
+      }
+    } else if (userId) {
+      const requester = await prisma.user.findUnique({ where: { id: userId } })
+      if (!requester) {
+        return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 })
+      }
     }
 
     const unidades = await prisma.unidad.findMany({ orderBy: { nombre: 'asc' } })

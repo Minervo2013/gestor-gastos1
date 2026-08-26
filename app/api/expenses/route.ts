@@ -29,6 +29,12 @@ export async function GET(request: NextRequest) {
             ultimos4: true,
             descripcion: true,
           }
+        },
+        unidadDestino: {
+          select: {
+            id: true,
+            nombre: true,
+          }
         }
       },
       orderBy: { fechaGasto: 'desc' }
@@ -71,6 +77,7 @@ export async function POST(request: NextRequest) {
       documentoNombre,
       documentoTipo,
       tarjetaId,
+      unidadDestinoId,
     } = body;
 
     // Validaciones básicas
@@ -140,6 +147,7 @@ export async function POST(request: NextRequest) {
       tieneCuotas: Boolean(tieneCuotas),
       cantidadCuotas: cantidadCuotas ? parseInt(cantidadCuotas) : null,
       tarjetaId: tarjetaId || null,
+      unidadDestinoId: unidadDestinoId || null,
       documento,
       documentoNombre,
       documentoTipo,
@@ -151,7 +159,7 @@ export async function POST(request: NextRequest) {
       INSERT INTO expenses (
         id, "userId", "fechaGasto", motivo, detalle, monto, "montoEnPesos",
         "importeTotal", moneda, "tipoCambio", "canalPago", "canalPagoDetalle",
-        "tieneCuotas", "cantidadCuotas", "tarjetaId", documento, "documentoNombre",
+        "tieneCuotas", "cantidadCuotas", "tarjetaId", "unidadDestinoId", documento, "documentoNombre",
         "documentoTipo", "createdAt", "updatedAt"
       ) VALUES (
         ${expenseData.id}, ${expenseData.userId}, ${expenseData.fechaGasto},
@@ -159,6 +167,7 @@ export async function POST(request: NextRequest) {
         ${expenseData.montoEnPesos}, ${expenseData.importeTotal}, ${expenseData.moneda},
         ${expenseData.tipoCambio}, ${expenseData.canalPago}, ${expenseData.canalPagoDetalle},
         ${expenseData.tieneCuotas}, ${expenseData.cantidadCuotas}, ${expenseData.tarjetaId},
+        ${expenseData.unidadDestinoId},
         ${expenseData.documento}, ${expenseData.documentoNombre}, ${expenseData.documentoTipo},
         ${expenseData.createdAt}, ${expenseData.updatedAt}
       ) RETURNING *;
@@ -213,6 +222,7 @@ export async function PUT(request: NextRequest) {
       documentoNombre,
       documentoTipo,
       tarjetaId,
+      unidadDestinoId,
     } = body;
 
     // Validaciones básicas
@@ -272,6 +282,7 @@ export async function PUT(request: NextRequest) {
         "tieneCuotas" = ${Boolean(tieneCuotas)},
         "cantidadCuotas" = ${cantidadCuotas ? parseInt(cantidadCuotas) : null},
         "tarjetaId" = ${tarjetaId || null},
+        "unidadDestinoId" = ${unidadDestinoId || null},
         documento = ${documento},
         "documentoNombre" = ${documentoNombre},
         "documentoTipo" = ${documentoTipo},

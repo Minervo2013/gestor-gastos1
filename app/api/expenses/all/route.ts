@@ -46,6 +46,9 @@ export async function GET(request: NextRequest) {
               select: { id: true, nombre: true }
             }
           }
+        },
+        unidadDestino: {
+          select: { id: true, nombre: true }
         }
       },
       orderBy: { fechaGasto: 'desc' }
