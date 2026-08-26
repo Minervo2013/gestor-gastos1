@@ -26,6 +26,28 @@ export interface Expense {
   documentoTipo?: string
   tarjetaId?: string
   tarjeta?: { id: string; ultimos4: string; descripcion?: string }
+  recurringExpenseId?: string
+}
+
+export interface RecurringExpense {
+  id: string
+  motivo: string
+  detalle: string
+  monto: number
+  moneda: string
+  tipoCambio?: number
+  canalPago: "web" | "local" | "otro"
+  canalPagoDetalle?: string
+  diaDelMes: number
+  activo: boolean
+  fechaInicio: string
+  fechaFin?: string
+  ultimoPeriodoGenerado?: string
+  userId: string
+  tarjetaId?: string
+  tarjeta?: { id: string; ultimos4: string; descripcion?: string }
+  createdAt?: string
+  updatedAt?: string
 }
 
 export const MONEDAS = ["ARS", "USD", "EUR", "BRL", "CLP"] as const

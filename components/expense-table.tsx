@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { FileText, Eye, Globe, Store, Info, Pencil } from "lucide-react"
+import { FileText, Eye, Globe, Store, Info, Pencil, Repeat } from "lucide-react"
 
 interface ExpenseTableProps {
   expenses: Expense[]
@@ -101,7 +101,12 @@ export function ExpenseTable({ expenses, onEdit }: ExpenseTableProps) {
             <div key={expense.id} className="rounded-lg border p-4 space-y-3">
               <div className="flex items-start justify-between">
                 <div>
-                  <p className="font-semibold">{expense.motivo}</p>
+                  <p className="font-semibold flex items-center gap-1">
+                    {expense.motivo}
+                    {expense.recurringExpenseId && (
+                      <Repeat className="h-3.5 w-3.5 text-muted-foreground" aria-label="Gasto recurrente" />
+                    )}
+                  </p>
                   <p className="text-sm text-muted-foreground">{formatDate(expense.fechaGasto)}</p>
                 </div>
                 <Badge variant="outline" className="flex items-center gap-1">
@@ -187,7 +192,14 @@ export function ExpenseTable({ expenses, onEdit }: ExpenseTableProps) {
               {expenses.map((expense) => (
                 <TableRow key={expense.id}>
                   <TableCell className="font-medium">{formatDate(expense.fechaGasto)}</TableCell>
-                  <TableCell className="max-w-[200px] truncate">{expense.motivo}</TableCell>
+                  <TableCell className="max-w-[200px] truncate">
+                    <span className="flex items-center gap-1">
+                      {expense.motivo}
+                      {expense.recurringExpenseId && (
+                        <Repeat className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-label="Gasto recurrente" />
+                      )}
+                    </span>
+                  </TableCell>
                   <TableCell className="text-sm font-mono">
                     {expense.tarjeta ? (
                       <span title={expense.tarjeta.descripcion}>**** {expense.tarjeta.ultimos4}</span>

@@ -3,8 +3,9 @@
 import { useState, useEffect } from "react"
 import { ExpenseForm } from "@/components/expense-form"
 import { ExpenseTable } from "@/components/expense-table"
-import type { Expense, Tarjeta } from "@/lib/types"
-import { Receipt, LogOut, CreditCard, Eye, Download, Plus, Trash2, CalendarDays, X } from "lucide-react"
+import { RecurringExpenseForm } from "@/components/recurring-expense-form"
+import type { Expense, Tarjeta, RecurringExpense } from "@/lib/types"
+import { Receipt, LogOut, CreditCard, Eye, Download, Plus, Trash2, CalendarDays, X, Repeat, Power } from "lucide-react"
 import { getCurrentUser, logout } from "@/lib/auth"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -41,6 +42,11 @@ export default function ExpensesPage() {
   // Filtro de fechas
   const [dateFrom, setDateFrom] = useState("")
   const [dateTo, setDateTo] = useState("")
+
+  // Gastos recurrentes
+  const [recurringExpenses, setRecurringExpenses] = useState<RecurringExpense[]>([])
+  const [showRecurringDialog, setShowRecurringDialog] = useState(false)
+  const [isSavingRecurring, setIsSavingRecurring] = useState(false)
 
   const loadUserExpenses = async (userId: string) => {
     try {
@@ -96,6 +102,75 @@ export default function ExpensesPage() {
       alert('Error de conexión')
     } finally {
       setIsAddingCard(false)
+    }
+  }
+
+  const loadRecurringExpenses = async (userId: string) => {
+    try {
+      const response = await fetch(`/api/recurring-expenses?userId=${userId}`)
+      const data = await response.json()
+      if (data.success) setRecurringExpenses(data.recurringExpenses)
+    } catch (error) {
+      console.error('Error al cargar gastos recurrentes:', error)
+    }
+  }
+
+  const handleAddRecurring = async (formValues: Omit<RecurringExpense, "id" | "userId" | "activo" | "fechaInicio" | "ultimoPeriodoGenerado">) => {
+    if (!user) return
+    setIsSavingRecurring(true)
+    try {
+      const response = await fetch('/api/recurring-expenses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...formValues, userId: user.id }),
+      })
+      const data = await response.json()
+      if (data.success) {
+        setRecurringExpenses(prev => [data.recurringExpense, ...prev])
+      } else {
+        alert('Error: ' + data.error)
+      }
+    } catch {
+      alert('Error de conexión')
+    } finally {
+      setIsSavingRecurring(false)
+    }
+  }
+
+  const handleToggleRecurringActive = async (recurring: RecurringExpense) => {
+    if (!user) return
+    try {
+      const response = await fetch('/api/recurring-expenses', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: recurring.id, userId: user.id, activo: !recurring.activo }),
+      })
+      const data = await response.json()
+      if (data.success) {
+        setRecurringExpenses(prev => prev.map(r => (r.id === recurring.id ? data.recurringExpense : r)))
+      } else {
+        alert('Error: ' + data.error)
+      }
+    } catch {
+      alert('Error de conexión')
+    }
+  }
+
+  const handleDeleteRecurring = async (id: string) => {
+    if (!user) return
+    if (!confirm("¿Eliminar este gasto recurrente? No se borrarán los gastos ya generados.")) return
+    try {
+      const response = await fetch(`/api/recurring-expenses?id=${id}&userId=${user.id}`, {
+        method: 'DELETE',
+      })
+      const data = await response.json()
+      if (data.success) {
+        setRecurringExpenses(prev => prev.filter(r => r.id !== id))
+      } else {
+        alert('Error: ' + data.error)
+      }
+    } catch {
+      alert('Error de conexión')
     }
   }
 
@@ -157,6 +232,7 @@ export default function ExpensesPage() {
 
     loadUserExpenses(currentUser.id)
     loadCards(currentUser.id)
+    loadRecurringExpenses(currentUser.id)
   }, [])
 
   const handleAddExpense = (expense: Expense) => {
@@ -269,6 +345,18 @@ export default function ExpensesPage() {
                 Mis Tarjetas
                 {cards.length > 0 && (
                   <span className="ml-1 rounded-full bg-white/20 px-1.5 text-xs">{cards.length}</span>
+                )}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowRecurringDialog(true)}
+                className="bg-white/10 border-white/30 text-white hover:bg-white/20"
+              >
+                <Repeat className="mr-2 h-4 w-4" />
+                Recurrentes
+                {recurringExpenses.length > 0 && (
+                  <span className="ml-1 rounded-full bg-white/20 px-1.5 text-xs">{recurringExpenses.length}</span>
                 )}
               </Button>
               <Button
@@ -514,6 +602,71 @@ export default function ExpensesPage() {
                 <Plus className="mr-2 h-4 w-4" />
                 {isAddingCard ? "Agregando..." : "Agregar tarjeta"}
               </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showRecurringDialog} onOpenChange={setShowRecurringDialog}>
+        <DialogContent
+          className="sm:max-w-2xl max-h-[90vh] overflow-y-auto border shadow-lg"
+          style={{ backgroundColor: '#ffffff', backdropFilter: 'none', opacity: 1 }}
+        >
+          <DialogHeader style={{ backgroundColor: '#ffffff' }}>
+            <DialogTitle>Gastos Recurrentes</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-6" style={{ backgroundColor: '#ffffff' }}>
+            <p className="text-sm text-muted-foreground">
+              Los gastos recurrentes (suscripciones, cuotas fijas, etc.) se generan automáticamente
+              cada mes en el día que indiques, sin que tengas que cargarlos a mano.
+            </p>
+
+            {recurringExpenses.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-2">
+                No tenés gastos recurrentes configurados todavía.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {recurringExpenses.map((r) => (
+                  <div key={r.id} className="flex items-center justify-between gap-3 rounded-lg border p-3">
+                    <div className="min-w-0">
+                      <p className="font-medium truncate flex items-center gap-2">
+                        {r.motivo}
+                        {!r.activo && (
+                          <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">Pausado</span>
+                        )}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {r.moneda} {r.monto.toFixed(2)} · día {r.diaDelMes} de cada mes
+                        {r.tarjeta && <> · **** {r.tarjeta.ultimos4}</>}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        title={r.activo ? "Pausar" : "Reactivar"}
+                        onClick={() => handleToggleRecurringActive(r)}
+                      >
+                        <Power className={`h-4 w-4 ${r.activo ? "text-primary" : "text-muted-foreground"}`} />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDeleteRecurring(r.id)}
+                        className="text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="border-t pt-4">
+              <p className="text-sm font-medium mb-3">Agregar gasto recurrente</p>
+              <RecurringExpenseForm onSubmit={handleAddRecurring} cards={cards} submitting={isSavingRecurring} />
             </div>
           </div>
         </DialogContent>

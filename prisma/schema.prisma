@@ -25,6 +25,7 @@ model User {
   expenses         Expense[]
   cardSummaries    CardSummary[]
   tarjetas         Tarjeta[]
+  recurringExpenses RecurringExpense[]
 
   @@map("users")
 }
@@ -58,6 +59,10 @@ model Expense {
   tarjetaId          String?
   tarjeta            Tarjeta?  @relation(fields: [tarjetaId], references: [id], onDelete: SetNull)
 
+  // Plantilla de gasto recurrente que generó este gasto (si aplica)
+  recurringExpenseId String?
+  recurringExpense   RecurringExpense? @relation(fields: [recurringExpenseId], references: [id], onDelete: SetNull)
+
   @@map("expenses")
 }
 
@@ -72,8 +77,37 @@ model Tarjeta {
   user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   expenses      Expense[]
   cardSummaries CardSummary[]
+  recurringExpenses RecurringExpense[]
 
   @@map("tarjetas")
+}
+
+model RecurringExpense {
+  id                     String    @id @default(cuid())
+  motivo                 String
+  detalle                String
+  monto                  Float
+  moneda                 String
+  tipoCambio             Float?
+  canalPago              String    // "web", "local", "otro"
+  canalPagoDetalle       String?
+  diaDelMes              Int       // Día del mes (1-28) en que se genera el gasto
+  activo                 Boolean   @default(true)
+  fechaInicio            DateTime  @default(now())
+  fechaFin               DateTime?
+  ultimoPeriodoGenerado  String?   // Último período ya generado, formato "YYYY-MM"
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  userId                 String
+  user                   User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  tarjetaId              String?
+  tarjeta                Tarjeta?  @relation(fields: [tarjetaId], references: [id], onDelete: SetNull)
+
+  expenses               Expense[]
+
+  @@map("recurring_expenses")
 }
 
 model CardSummary {
