@@ -1,9 +1,24 @@
+export interface Unidad {
+  id: string
+  nombre: string
+  descripcion?: string
+  createdAt?: string
+  updatedAt?: string
+}
+
 export interface Tarjeta {
   id: string
   ultimos4: string
   descripcion?: string
   userId: string
   createdAt: Date
+  unidadId?: string
+  unidad?: { id: string; nombre: string; descripcion?: string }
+}
+
+export interface AdminTarjeta extends Tarjeta {
+  userNombre: string
+  userEmail: string
 }
 
 export interface Expense {
@@ -25,7 +40,7 @@ export interface Expense {
   documentoNombre?: string
   documentoTipo?: string
   tarjetaId?: string
-  tarjeta?: { id: string; ultimos4: string; descripcion?: string }
+  tarjeta?: { id: string; ultimos4: string; descripcion?: string; unidad?: { id: string; nombre: string } | null }
   recurringExpenseId?: string
 }
 

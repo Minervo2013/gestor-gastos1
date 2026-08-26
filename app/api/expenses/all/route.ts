@@ -42,6 +42,9 @@ export async function GET(request: NextRequest) {
             id: true,
             ultimos4: true,
             descripcion: true,
+            unidad: {
+              select: { id: true, nombre: true }
+            }
           }
         }
       },

@@ -46,6 +46,36 @@ export async function POST(request: NextRequest) {
   }
 }
 
+export async function PUT(request: NextRequest) {
+  try {
+    const body = await request.json()
+    const { tarjetaId, unidadId, adminUserId } = body
+
+    if (!tarjetaId || !adminUserId) {
+      return NextResponse.json({ error: 'tarjetaId y adminUserId son requeridos' }, { status: 400 })
+    }
+
+    const adminUser = await prisma.user.findUnique({ where: { id: adminUserId } })
+    if (!adminUser || !adminUser.isAdmin) {
+      return NextResponse.json({ error: 'Acceso no autorizado' }, { status: 403 })
+    }
+
+    const tarjeta = await prisma.tarjeta.update({
+      where: { id: tarjetaId },
+      data: { unidadId: unidadId || null },
+      include: {
+        user: { select: { id: true, nombre: true, email: true } },
+        unidad: { select: { id: true, nombre: true, descripcion: true } },
+      },
+    })
+
+    return NextResponse.json({ success: true, tarjeta })
+  } catch (error) {
+    console.error('Error al asignar unidad a tarjeta:', error)
+    return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 })
+  }
+}
+
 export async function DELETE(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)

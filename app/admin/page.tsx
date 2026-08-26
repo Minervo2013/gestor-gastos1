@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from "react"
 import { getCurrentUser, logout } from "@/lib/auth"
-import type { UserExpense, User, Tarjeta } from "@/lib/types"
-import { Receipt, LogOut, Eye, Printer, Filter, FileText, Download, Upload, CreditCard } from "lucide-react"
+import type { UserExpense, User, Tarjeta, Unidad, AdminTarjeta } from "@/lib/types"
+import { Receipt, LogOut, Eye, Printer, Filter, FileText, Download, Upload, CreditCard, Building2, Trash2, Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -18,7 +18,16 @@ export default function AdminPage() {
   const [filteredExpenses, setFilteredExpenses] = useState<UserExpense[]>([])
   const [selectedExpense, setSelectedExpense] = useState<UserExpense | null>(null)
   const [filterUser, setFilterUser] = useState<string>("all")
+  const [filterUnidad, setFilterUnidad] = useState<string>("all")
   const [uniqueUsers, setUniqueUsers] = useState<{ id: string; name: string }[]>([])
+
+  // Tarjetas y unidades
+  const [allCards, setAllCards] = useState<AdminTarjeta[]>([])
+  const [unidades, setUnidades] = useState<Unidad[]>([])
+  const [showCardsAdminDialog, setShowCardsAdminDialog] = useState(false)
+  const [newUnidadNombre, setNewUnidadNombre] = useState("")
+  const [newUnidadDescripcion, setNewUnidadDescripcion] = useState("")
+  const [isAddingUnidad, setIsAddingUnidad] = useState(false)
   const [showUploadSummaryDialog, setShowUploadSummaryDialog] = useState(false)
   const [selectedUserForSummary, setSelectedUserForSummary] = useState<{ id: string; name: string } | null>(null)
   const [summaryPeriod, setSummaryPeriod] = useState("")
@@ -56,6 +65,108 @@ export default function AdminPage() {
     }
   }
 
+  const loadUnidades = async (adminUserId: string) => {
+    try {
+      const response = await fetch(`/api/units?adminUserId=${adminUserId}`)
+      const data = await response.json()
+      if (data.success) setUnidades(data.unidades)
+    } catch (error) {
+      console.error('Error al cargar unidades:', error)
+    }
+  }
+
+  const loadAllCards = async (adminUserId: string) => {
+    try {
+      const response = await fetch(`/api/cards/all?adminUserId=${adminUserId}`)
+      const data = await response.json()
+      if (data.success) setAllCards(data.tarjetas)
+    } catch (error) {
+      console.error('Error al cargar tarjetas:', error)
+    }
+  }
+
+  const handleAddUnidad = async () => {
+    if (!user || !newUnidadNombre.trim()) return
+    setIsAddingUnidad(true)
+    try {
+      const response = await fetch('/api/units', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          adminUserId: user.id,
+          nombre: newUnidadNombre,
+          descripcion: newUnidadDescripcion || undefined,
+        }),
+      })
+      const data = await response.json()
+      if (data.success) {
+        setUnidades(prev => [...prev, data.unidad].sort((a, b) => a.nombre.localeCompare(b.nombre)))
+        setNewUnidadNombre("")
+        setNewUnidadDescripcion("")
+      } else {
+        alert('Error: ' + data.error)
+      }
+    } catch {
+      alert('Error de conexión')
+    } finally {
+      setIsAddingUnidad(false)
+    }
+  }
+
+  const handleDeleteUnidad = async (unidadId: string) => {
+    if (!user) return
+    if (!confirm("¿Eliminar esta unidad? Las tarjetas asignadas quedarán sin unidad.")) return
+    try {
+      const response = await fetch(`/api/units?unidadId=${unidadId}&adminUserId=${user.id}`, {
+        method: 'DELETE',
+      })
+      const data = await response.json()
+      if (data.success) {
+        setUnidades(prev => prev.filter(u => u.id !== unidadId))
+        setAllCards(prev => prev.map(c => (c.unidadId === unidadId ? { ...c, unidadId: undefined, unidad: undefined } : c)))
+      } else {
+        alert('Error: ' + data.error)
+      }
+    } catch {
+      alert('Error de conexión')
+    }
+  }
+
+  const handleAssignUnidad = async (tarjetaId: string, unidadId: string) => {
+    if (!user) return
+    try {
+      const response = await fetch('/api/cards', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tarjetaId,
+          unidadId: unidadId === "none" ? null : unidadId,
+          adminUserId: user.id,
+        }),
+      })
+      const data = await response.json()
+      if (data.success) {
+        setAllCards(prev => prev.map(c => (c.id === tarjetaId ? { ...c, ...data.tarjeta, userNombre: c.userNombre, userEmail: c.userEmail } : c)))
+        // Reflejar el cambio también en la lista de gastos ya cargada
+        setAllExpenses(prev => prev.map(e =>
+          e.tarjeta?.id === tarjetaId
+            ? { ...e, tarjeta: { ...e.tarjeta, unidad: data.tarjeta.unidad || null } }
+            : e
+        ))
+      } else {
+        alert('Error: ' + data.error)
+      }
+    } catch {
+      alert('Error de conexión')
+    }
+  }
+
+  const handleOpenCardsAdmin = async () => {
+    if (!user) return
+    await Promise.all([loadAllCards(user.id), loadUnidades(user.id)])
+    setShowCardsAdminDialog(true)
+  }
+
   useEffect(() => {
     // Verificar que sea administrador
     const currentUser = getCurrentUser()
@@ -67,15 +178,23 @@ export default function AdminPage() {
 
     // Cargar todos los gastos desde la base de datos
     loadAllExpenses(currentUser.id)
+    loadUnidades(currentUser.id)
   }, [])
 
   useEffect(() => {
-    if (filterUser === "all") {
-      setFilteredExpenses(allExpenses)
-    } else {
-      setFilteredExpenses(allExpenses.filter((e) => e.userId === filterUser))
+    let result = allExpenses
+    if (filterUser !== "all") {
+      result = result.filter((e) => e.userId === filterUser)
     }
-  }, [filterUser, allExpenses])
+    if (filterUnidad !== "all") {
+      if (filterUnidad === "none") {
+        result = result.filter((e) => !e.tarjeta?.unidad)
+      } else {
+        result = result.filter((e) => e.tarjeta?.unidad?.id === filterUnidad)
+      }
+    }
+    setFilteredExpenses(result)
+  }, [filterUser, filterUnidad, allExpenses])
 
   const handleLogout = () => {
     logout()
@@ -806,24 +925,60 @@ export default function AdminPage() {
         <Card className="mb-6">
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle>Filtrar por Usuario</CardTitle>
+              <CardTitle>Filtros</CardTitle>
               <Filter className="h-5 w-5 text-muted-foreground" />
             </div>
           </CardHeader>
+          <CardContent className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label className="text-sm text-muted-foreground">Usuario</Label>
+              <Select value={filterUser} onValueChange={setFilterUser}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Todos los usuarios" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos los usuarios</SelectItem>
+                  {uniqueUsers.map((u) => (
+                    <SelectItem key={u.id} value={u.id}>
+                      {u.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-sm text-muted-foreground">Unidad</Label>
+              <Select value={filterUnidad} onValueChange={setFilterUnidad}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Todas las unidades" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas las unidades</SelectItem>
+                  <SelectItem value="none">Sin unidad asignada</SelectItem>
+                  {unidades.map((u) => (
+                    <SelectItem key={u.id} value={u.id}>
+                      {u.nombre}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="mb-6">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle>Tarjetas de Usuarios</CardTitle>
+              <Building2 className="h-5 w-5 text-muted-foreground" />
+            </div>
+            <CardDescription>Ver las tarjetas cargadas por los usuarios y asignarles una unidad de negocio</CardDescription>
+          </CardHeader>
           <CardContent>
-            <Select value={filterUser} onValueChange={setFilterUser}>
-              <SelectTrigger>
-                <SelectValue placeholder="Todos los usuarios" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos los usuarios</SelectItem>
-                {uniqueUsers.map((u) => (
-                  <SelectItem key={u.id} value={u.id}>
-                    {u.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Button className="button-elegant" size="sm" onClick={handleOpenCardsAdmin}>
+              <CreditCard className="mr-2 h-4 w-4" />
+              Gestionar Tarjetas y Unidades
+            </Button>
           </CardContent>
         </Card>
 
@@ -1065,6 +1220,99 @@ export default function AdminPage() {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showCardsAdminDialog} onOpenChange={setShowCardsAdminDialog}>
+        <DialogContent
+          className="sm:max-w-3xl max-h-[85vh] overflow-y-auto border shadow-lg"
+          style={{ backgroundColor: '#ffffff', backdropFilter: 'none', opacity: 1 }}
+        >
+          <DialogHeader style={{ backgroundColor: '#ffffff' }}>
+            <DialogTitle>Tarjetas y Unidades</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-6" style={{ backgroundColor: '#ffffff' }}>
+            <div>
+              <h3 className="mb-3 font-semibold">Unidades de negocio</h3>
+              {unidades.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No hay unidades creadas todavía.</p>
+              ) : (
+                <div className="mb-3 flex flex-wrap gap-2">
+                  {unidades.map((u) => (
+                    <div key={u.id} className="flex items-center gap-2 rounded-full border px-3 py-1 text-sm">
+                      <span>{u.nombre}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteUnidad(u.id)}
+                        className="text-muted-foreground hover:text-destructive"
+                        title="Eliminar unidad"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="flex flex-wrap gap-2">
+                <Input
+                  placeholder="Nombre de la unidad"
+                  value={newUnidadNombre}
+                  onChange={(e) => setNewUnidadNombre(e.target.value)}
+                  className="flex-1 min-w-[160px]"
+                />
+                <Input
+                  placeholder="Descripción (opcional)"
+                  value={newUnidadDescripcion}
+                  onChange={(e) => setNewUnidadDescripcion(e.target.value)}
+                  className="flex-1 min-w-[160px]"
+                />
+                <Button
+                  onClick={handleAddUnidad}
+                  disabled={isAddingUnidad || !newUnidadNombre.trim()}
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Agregar
+                </Button>
+              </div>
+            </div>
+
+            <div className="border-t pt-4">
+              <h3 className="mb-3 font-semibold">Tarjetas cargadas por los usuarios</h3>
+              {allCards.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No hay tarjetas cargadas todavía.</p>
+              ) : (
+                <div className="space-y-2">
+                  {allCards.map((card) => (
+                    <div key={card.id} className="flex flex-col gap-2 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <p className="font-mono font-medium">**** {card.ultimos4}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {card.userNombre} — {card.userEmail}
+                          {card.descripcion ? ` · ${card.descripcion}` : ""}
+                        </p>
+                      </div>
+                      <Select
+                        value={card.unidadId || "none"}
+                        onValueChange={(value) => handleAssignUnidad(card.id, value)}
+                      >
+                        <SelectTrigger className="sm:w-56">
+                          <SelectValue placeholder="Sin unidad" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Sin unidad</SelectItem>
+                          {unidades.map((u) => (
+                            <SelectItem key={u.id} value={u.id}>
+                              {u.nombre}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
 

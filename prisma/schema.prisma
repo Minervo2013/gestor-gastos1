@@ -79,7 +79,23 @@ model Tarjeta {
   cardSummaries CardSummary[]
   recurringExpenses RecurringExpense[]
 
+  // Unidad de negocio a la que el administrador asignó esta tarjeta
+  unidadId      String?
+  unidad        Unidad?       @relation(fields: [unidadId], references: [id], onDelete: SetNull)
+
   @@map("tarjetas")
+}
+
+model Unidad {
+  id          String    @id @default(cuid())
+  nombre      String    @unique
+  descripcion String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  tarjetas    Tarjeta[]
+
+  @@map("unidades")
 }
 
 model RecurringExpense {
